@@ -12,8 +12,10 @@ import { BrandMark, Icon } from "@/lib/icons";
 import { useT, setLocale, getLocale, available } from "@/lib/i18n";
 import { api, isTauri } from "@/lib/api";
 import { mockReset } from "@/lib/mock";
+import { checkForUpdate } from "@/lib/updater";
 import { useStore } from "@/state/store";
 import { useUi } from "@/components/ui";
+import { showUpdateModal } from "@/components/UpdateModal";
 import type {
   AppSettings,
   ProviderConfig,
@@ -110,7 +112,8 @@ interface SyncStatusState {
 
 export function Settings() {
   const { state, saveSettings, loadSync, saveSyncConfig, pullRemote, pushMerged } = useStore();
-  const { toast, openModal, closeModal } = useUi();
+  const ui = useUi();
+  const { toast, openModal, closeModal } = ui;
   const tr = useT();
 
   const st = state.settings;
@@ -165,6 +168,29 @@ export function Settings() {
   const onReset = () => {
     mockReset();
     location.reload();
+  };
+
+  /* ------------------------------ 应用更新 ------------------------------ */
+
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+
+  const onCheckUpdate = async () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    try {
+      const update = await checkForUpdate();
+      if (update) {
+        setUpdateStatus(tr("settings.updateAvailable", { v: update.version }));
+        showUpdateModal(ui, update);
+      } else {
+        setUpdateStatus(tr("settings.upToDate"));
+      }
+    } catch (e) {
+      setUpdateStatus(tr("settings.checkFailed", { msg: errText(e) }));
+    } finally {
+      setCheckingUpdate(false);
+    }
   };
 
   /* ------------------------------ Git 同步 ------------------------------ */
@@ -431,6 +457,27 @@ export function Settings() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="card settings-list" style={{ marginTop: 16 }}>
+        <SettingRow
+          label={tr("settings.update")}
+          desc={
+            !isTauri()
+              ? tr("settings.updateUnsupported")
+              : updateStatus || tr("settings.updateDesc")
+          }
+        >
+          <button
+            className="btn"
+            id="setCheckUpdate"
+            disabled={checkingUpdate || !isTauri()}
+            onClick={onCheckUpdate}
+          >
+            <Icon name="refresh" />
+            {checkingUpdate ? tr("settings.checking") : tr("settings.checkUpdate")}
+          </button>
+        </SettingRow>
       </div>
 
       <div className="card settings-list" style={{ marginTop: 16 }}>

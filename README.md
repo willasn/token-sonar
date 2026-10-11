@@ -95,6 +95,7 @@ TokenSonar/
 │       │   ├── ui.tsx            # Modal / Confirm / Toast / 全局悬浮提示
 │       │   ├── charts.tsx        # 自研 SVG 面积图 + sparkline
 │       │   ├── ProviderForm.tsx  # 添加 / 编辑账号弹窗
+│       │   ├── UpdateModal.tsx   # 应用更新弹窗（版本说明 / 下载进度 / 重启）
 │       │   └── Onboarding.tsx    # 首启语言引导
 │       ├── state/
 │       │   └── store.tsx    # 单一数据源 + 聚合计算（Context + Hook）
@@ -104,6 +105,7 @@ TokenSonar/
 │       │   ├── kinds.ts     # 厂商类型元数据表（KIND_INFO / MODE_INFO）
 │       │   ├── format.ts    # 数字 / 金额 / 时间 格式化
 │       │   ├── icons.tsx    # 内联 SVG 图标集
+│       │   ├── updater.ts   # 应用内更新（Tauri updater 插件封装）
 │       │   └── i18n.ts      # 中英文案与语言订阅
 │       ├── styles/          # 分令牌 / 基础 / 组件 / 视图四层 CSS
 │       └── views/

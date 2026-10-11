@@ -710,6 +710,77 @@ table.data .key-cell {
   word-break: break-word;
 }
 
+/* ------------------------------ 应用更新弹窗 ---------------------------- */
+
+.update-notes {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.update-notes-title {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-bottom: var(--sp-2);
+}
+
+.update-notes pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.update-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.update-bar {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--border-strong);
+  overflow: hidden;
+}
+
+.update-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.update-progress-text {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.update-ok {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 13px;
+  color: var(--ok);
+}
+
+.update-error {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--danger);
+  word-break: break-word;
+}
+
+.update-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}
+
 /* ------------------------------ Toast --------------------------------- */
 
 .toast-root {

@@ -371,6 +371,7 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 | 刷新间隔 | 5 / 10 / 15 / 30 / 60 分钟 | 已实现 |
 | 数据目录 | 展示路径 + 一键在系统文件管理器中打开 | 已实现 |
 | 关于信息 | 版本、运行环境、账号数量 | 已实现 |
+| 应用更新 | 启动静默检查 + 手动「检查更新」，从 GitHub Releases 下载安装并重启 | 已实现 |
 | Git 仓库同步 | 仓库地址 / 用户名 / 密码或令牌 / 分支（首次同步自动保存）+ 一键同步（先拉取合并，冲突可选） | 已实现 |
 
 ---
@@ -394,6 +395,22 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 | 凭据处理 | 用户名密码只拼进单次 git 命令的 URL；克隆后立刻抹掉 `.git/config` 里的 userinfo；所有错误文案脱敏后再展示 |
 | 前置条件 | https 仓库需填写用户名与令牌（GitHub / GitLab 用 PAT 代替密码），走内置引擎无需安装 Git；git@ / ssh:// 需本机已安装 `git` 命令行 |
 | 风险提示 | 导出文件包含账号 Token、云 AK/SK，**必须使用私有仓库**；如无必要建议改用「不含账号密码 / API Key」 |
+
+---
+
+## 9.2 应用内更新
+
+基于 Tauri 官方 updater 插件，从 GitHub Releases 检查并安装新版本，无需用户手动下载安装包。
+
+| 项目 | 说明 |
+| --- | --- |
+| 检查时机 | 应用启动就绪后延迟 4 秒静默检查一次（失败不打扰），设置页提供手动「检查更新」按钮 |
+| 更新源 | `https://github.com/willasn/token-sonar/releases/latest/download/latest.json`（随 `tauri.conf.json` 的 `plugins.updater.endpoints` 配置） |
+| 安全校验 | 更新包使用 minisign 签名，安装前用内置公钥（`plugins.updater.pubkey`）核对完整性；私钥仅存于 GitHub Secrets，不入库 |
+| 交互 | 发现新版本 → 弹窗展示版本号与更新说明 → 「下载并安装」（带进度条）→ 「重启并应用」 |
+| 平台差异 | Windows 安装后由安装器自动重启；macOS 需应用内重启 |
+| 演示模式 | 非 Tauri 环境（浏览器预览）不执行检查，按钮置灰并提示不支持 |
+| 发布流程 | 打 `v*` 标签触发 `.github/workflows/release.yml`，由 `tauri-action` 产出正式 Release 与 `latest.json`；发版前需同步提升 `Cargo.toml`、`tauri.conf.json` 与 `package.json` 的版本号 |
 
 ---
 

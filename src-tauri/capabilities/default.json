@@ -8,6 +8,8 @@
     "core:default",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
+    "updater:default",
+    "process:allow-restart",
     "allow-list-providers",
     "allow-save-provider",
     "allow-remove-provider",

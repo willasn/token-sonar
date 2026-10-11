@@ -8,6 +8,8 @@ import { fmt } from "./lib/format";
 import { t, subscribe as subscribeLocale } from "./lib/i18n";
 import { useStore, type ViewName } from "./state/store";
 import { useUi } from "./components/ui";
+import { checkForUpdate } from "./lib/updater";
+import { showUpdateModal } from "./components/UpdateModal";
 import { Dashboard } from "./views/Dashboard";
 import { Providers } from "./views/Providers";
 import { Pricing } from "./views/Pricing";
@@ -45,13 +47,15 @@ function applyTheme(theme: string) {
 export default function App() {
   const store = useStore();
   const { state, aggregate, navigate, setSearch } = store;
-  const { toast } = useUi();
+  const ui = useUi();
+  const { toast } = ui;
 
   const [tick, setTick] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [formProvider, setFormProvider] = useState<ProviderConfig | null>(null);
   const [onboardingNeeded, setOnboardingNeeded] = useState(false);
   const refreshTimer = useRef<number | null>(null);
+  const updateChecked = useRef(false);
 
   // 语言切换后整体重绘
   useEffect(() => subscribeLocale(() => setTick((n) => n + 1)), []);
@@ -89,6 +93,22 @@ export default function App() {
     const settings = state.settings || null;
     if (!settings || !settings.language) setOnboardingNeeded(true);
     if (state.providers.length) store.refreshAll(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.ready]);
+
+  // 启动后静默检查一次更新（仅打包版生效；有更新才弹窗，失败静默忽略）
+  useEffect(() => {
+    if (!state.ready || updateChecked.current) return;
+    updateChecked.current = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const update = await checkForUpdate();
+        if (update) showUpdateModal(ui, update);
+      } catch {
+        /* 自动检查失败不打扰用户，可在设置页手动重试 */
+      }
+    }, 4000);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.ready]);
 
