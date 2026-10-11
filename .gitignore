@@ -1,0 +1,19 @@
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+*.log
+
+# Node
+node_modules/
+ui/dist/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 个人本地配置（含账号/令牌/私有域名，绝不入库）
+config.local.json
+*.local.json
+*.local.toml
+.env
+.env.local

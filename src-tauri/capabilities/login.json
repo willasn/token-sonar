@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "login-window",
+  "description": "DeepSeek 平台登录窗口（deeplogin）加载的是远程页面，这里只放行一件事：让注入脚本把捕获到的平台 Token 回传。不授予任何 core 权限。",
+  "local": false,
+  "remote": {
+    "urls": ["https://platform.deepseek.com"]
+  },
+  "windows": ["deeplogin"],
+  "permissions": ["allow-deepseek-login-token"]
+}

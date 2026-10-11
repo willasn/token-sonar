@@ -1,0 +1,55 @@
+[package]
+name = "token-sonar"
+version = "0.1.0"
+description = "TokenSonar - 多厂商 AI Token 用量 / 余额 / 费用监控台"
+authors = ["TokenSonar"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "token_sonar_lib"
+# 仅 macOS 桌面版：staticlib(iOS) / cdylib(Android) 均不需要，去掉可省 ~393M 的 .a 产物
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "process", "io-util"] }
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+    "charset",
+    "http2",
+    "macos-system-configuration",
+] }
+# 火山方舟管控面接口的 Signature V4（HMAC-SHA256）签名
+hmac = "0.12"
+sha2 = "0.10"
+# Git 同步的内置引擎：libgit2（https + 访问令牌为主路径，用户无需安装 Git）。
+# 走 vendored 编译，不依赖系统 OpenSSL / pkg-config，保证发布产物可复现。
+git2 = { version = "0.21", default-features = false, features = [
+    "https",
+    "vendored-libgit2",
+    "vendored-openssl",
+] }
+
+[profile.dev]
+# 自己的代码保留 file:line（panic 回溯可用），但去掉变量级调试信息，大幅减小体积
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+# 运行时依赖不生成调试信息（target/debug 体积的大头）
+# 注：build script / proc-macro 走 Cargo 默认的 build-override，已默认 debug = false
+debug = false
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

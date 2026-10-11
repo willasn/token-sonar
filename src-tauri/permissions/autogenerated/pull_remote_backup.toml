@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pull-remote-backup"
+description = "Enables the pull_remote_backup command without any pre-configured scope."
+commands.allow = ["pull_remote_backup"]
+
+[[permission]]
+identifier = "deny-pull-remote-backup"
+description = "Denies the pull_remote_backup command without any pre-configured scope."
+commands.deny = ["pull_remote_backup"]

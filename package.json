@@ -1,0 +1,30 @@
+{
+  "name": "token-sonar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TokenSonar — 汇总监控各家 AI 厂商 Token 用量 / 请求次数 / 余额 / 费用的桌面应用",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "web:dev": "vite",
+    "web:build": "vite build",
+    "web:check": "tsc --noEmit",
+    "check": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "dmg:background": "python3 scripts/make-dmg-background.py"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

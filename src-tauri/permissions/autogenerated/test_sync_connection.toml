@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-test-sync-connection"
+description = "Enables the test_sync_connection command without any pre-configured scope."
+commands.allow = ["test_sync_connection"]
+
+[[permission]]
+identifier = "deny-test-sync-connection"
+description = "Denies the test_sync_connection command without any pre-configured scope."
+commands.deny = ["test_sync_connection"]

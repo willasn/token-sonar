@@ -1,0 +1,116 @@
+/* ==========================================================================
+   TokenSonar · 设计令牌
+   - 提供暗色（默认）与亮色两套主题，通过 <html data-theme> 切换
+   ========================================================================== */
+
+:root {
+  /* 字体 */
+  --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+
+  /* 圆角 / 间距 */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* 动效 */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur: 180ms;
+
+  --sidebar-w: 232px;
+  --topbar-h: 64px;
+}
+
+/* ------------------------------ 暗色主题 ------------------------------- */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #080b11;
+  --bg-deep: #05070b;
+  --bg-elev: #0d121c;
+  --panel: #111826;
+  --panel-2: #16202f;
+  --panel-3: #1c2739;
+  --panel-hover: #1a2434;
+
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+
+  --text: #e9eefb;
+  --text-dim: #97a3bd;
+  --text-mute: #63708c;
+
+  --accent: #4d6bfe;
+  --accent-soft: rgba(77, 107, 254, 0.16);
+  --accent-2: #00d3a7;
+  --accent-2-soft: rgba(0, 211, 167, 0.15);
+  --accent-3: #a06bff;
+  --warn: #f7b955;
+  --warn-soft: rgba(247, 185, 85, 0.15);
+  --danger: #ff5f6d;
+  --danger-soft: rgba(255, 95, 109, 0.14);
+  --ok: #2dd4a7;
+
+  --grid: rgba(255, 255, 255, 0.055);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --glass: rgba(17, 24, 38, 0.72);
+  --scrim: rgba(3, 5, 9, 0.6);
+  --chart-area-1: rgba(77, 107, 254, 0.34);
+  --chart-area-2: rgba(77, 107, 254, 0);
+}
+
+/* ------------------------------ 亮色主题 ------------------------------- */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f2f5fb;
+  --bg-deep: #e8edf7;
+  --bg-elev: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f7f9fe;
+  --panel-3: #eef2fa;
+  --panel-hover: #f4f7fd;
+
+  --border: rgba(16, 24, 40, 0.09);
+  --border-strong: rgba(16, 24, 40, 0.16);
+
+  --text: #0f172a;
+  --text-dim: #52607a;
+  --text-mute: #8492ab;
+
+  --accent: #3355f5;
+  --accent-soft: rgba(51, 85, 245, 0.1);
+  --accent-2: #00a888;
+  --accent-2-soft: rgba(0, 168, 136, 0.12);
+  --accent-3: #7c3aed;
+  --warn: #d98a09;
+  --warn-soft: rgba(217, 138, 9, 0.13);
+  --danger: #e0364a;
+  --danger-soft: rgba(224, 54, 74, 0.1);
+  --ok: #0fa981;
+
+  --grid: rgba(16, 24, 40, 0.06);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.09);
+  --shadow-lg: 0 24px 60px rgba(16, 24, 40, 0.16);
+  --glass: rgba(255, 255, 255, 0.78);
+  --scrim: rgba(15, 23, 42, 0.35);
+  --chart-area-1: rgba(51, 85, 245, 0.22);
+  --chart-area-2: rgba(51, 85, 245, 0);
+}
