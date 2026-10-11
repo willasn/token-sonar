@@ -1,6 +1,7 @@
 name: Release
 
-# 推送 v* 标签时自动打包 macOS / Windows 安装包，并生成草稿 Release
+# 推送 v* 标签时自动打包 macOS / Windows 安装包，并发布 Release。
+# 版本号从标签自动推导（v0.2.0 → 0.2.0），无需手动改代码里的版本号。
 on:
   push:
     tags:
@@ -24,6 +25,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # 只打标签即可发布：把 tag 里的版本号写回三处版本号来源，保证安装包 / 应用内更新一致
+      - name: Sync version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "标签格式应为 vX.Y.Z，当前为 ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+          echo "Release version: $VERSION"
+
+          # package.json 与 tauri.conf.json：写顶层 version
+          node -e '
+            const fs = require("fs");
+            const v = process.argv[1];
+            for (const f of ["package.json", "src-tauri/tauri.conf.json"]) {
+              const obj = JSON.parse(fs.readFileSync(f, "utf8"));
+              obj.version = v;
+              fs.writeFileSync(f, JSON.stringify(obj, null, 2) + "\n");
+            }
+          ' "$VERSION"
+
+          # Cargo.toml：只改 [package] 段的 version（rust-version 不受影响）
+          node -e '
+            const fs = require("fs");
+            const v = process.argv[1];
+            const p = "src-tauri/Cargo.toml";
+            const s = fs.readFileSync(p, "utf8")
+              .replace(/^(version\s*=\s*")[^"]*(")/m, `$1${v}$2`);
+            fs.writeFileSync(p, s);
+          ' "$VERSION"
 
       - name: Setup Node
         uses: actions/setup-node@v4
