@@ -1,0 +1,67 @@
+name: Release
+
+# 推送 v* 标签时自动打包 macOS / Windows 安装包，并生成草稿 Release
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: "--target aarch64-apple-darwin"
+            rust_targets: "aarch64-apple-darwin"
+          - platform: windows-latest
+            args: ""
+            rust_targets: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build app and attach bundles to release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "TokenSonar ${{ github.ref_name }}"
+          releaseBody: |
+            TokenSonar ${{ github.ref_name }}
+
+            ## 安装包
+            - macOS：`*.dmg`（仅 Apple Silicon）
+            - Windows：`*-setup.exe` / `*.msi`
+
+            ## 说明
+            安装包未签名：
+            - macOS 首次打开若提示「无法验证开发者」，请右键 → 打开，或执行 `xattr -cr /Applications/TokenSonar.app`
+            - Windows 若弹出 SmartScreen，请点「更多信息」→「仍要运行」
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
