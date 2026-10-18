@@ -4,6 +4,9 @@
 use chrono::{DateTime, Datelike, Local, NaiveDateTime, Utc};
 use serde_json::Value;
 
+use crate::http::{join_url, Http};
+use crate::models::ProviderConfig;
+
 /// 把任意 JSON 标量转成 f64（支持数字与数字字符串）。
 pub fn to_f64(v: &Value) -> Option<f64> {
     match v {
@@ -215,3 +218,116 @@ pub fn now_iso() -> String {
 pub fn unixtime_days_ago(days: i64) -> i64 {
     (Local::now() - chrono::Duration::days(days)).timestamp()
 }
+
+// ---------------------------------------------------------------------------
+// 调用大模型（联网检索价格等场景共用）
+// ---------------------------------------------------------------------------
+
+/// 取该渠道的 API 基址（用户填写优先，缺省用厂商官方地址）。
+pub fn api_base(cfg: &ProviderConfig) -> String {
+    cfg.base_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| cfg.kind.default_base_url())
+        .trim_end_matches('/')
+        .to_string()
+}
+
+/// 取该渠道的 API Key（`api` 接入方式的 `token`）。
+pub fn api_token(cfg: &ProviderConfig) -> Result<String, String> {
+    let key = cfg.token.as_deref().unwrap_or("").trim().to_string();
+    if key.is_empty() {
+        return Err("该渠道没有可用的 API Key，无法调用模型".to_string());
+    }
+    Ok(key)
+}
+
+/// 调一次 OpenAI 兼容的 `chat/completions`，返回首条回复的文本内容。
+pub async fn openai_chat(
+    http: &Http,
+    url: &str,
+    api_key: &str,
+    model: &str,
+    system: &str,
+    user: &str,
+) -> Result<String, String> {
+    let body = serde_json::json!({
+        "model": model,
+        "messages": [
+            { "role": "system", "content": system },
+            { "role": "user", "content": user },
+        ],
+        "temperature": 0,
+        "stream": false,
+    });
+    let (mut v, _) = http
+        .post_json_h(url, &body, Some(api_key), None, &[])
+        .await?;
+    // 部分中转站会把结果再包一层 `data`
+    if v.get("choices").is_none() {
+        if let Some(inner) = v.get("data").cloned() {
+            v = inner;
+        }
+    }
+    let content = v
+        .get("choices")
+        .and_then(|c| c.as_array())
+        .and_then(|a| a.first())
+        .and_then(|c| c.get("message"))
+        .and_then(|m| pick_string(m, &["content"]))
+        .unwrap_or_default();
+    if content.trim().is_empty() {
+        // 中转站常见的错误体
+        let msg = pick_string(&v, &["message", "msg", "error"])
+            .unwrap_or_else(|| "模型未返回内容".to_string());
+        return Err(format!("调用模型失败: {msg}"));
+    }
+    Ok(content)
+}
+
+/// 读取 OpenAI 兼容的 `GET /models`，返回模型 id 列表（失败返回空）。
+pub async fn fetch_model_ids(http: &Http, base: &str, api_key: &str, path: &str) -> Vec<String> {
+    let url = join_url(base, path);
+    let Ok(v) = http.get_json(&url, Some(api_key), None).await else {
+        return Vec::new();
+    };
+    let root = if v.get("data").is_none() {
+        v.get("result").cloned().unwrap_or(v.clone())
+    } else {
+        v.clone()
+    };
+    let list = root
+        .get("data")
+        .and_then(|d| d.as_array())
+        .or_else(|| root.as_array());
+    let mut out: Vec<String> = Vec::new();
+    for item in list.into_iter().flatten() {
+        let id = pick_string(item, &["id", "model", "model_name"]);
+        if let Some(id) = id {
+            let id = id.trim().to_string();
+            if !id.is_empty() && !out.contains(&id) {
+                out.push(id);
+            }
+        }
+    }
+    out
+}
+
+/// 从模型输出里抽出 JSON（容忍 ```json 代码块与前后解释文字）。
+pub fn extract_json(text: &str) -> Result<Value, String> {
+    let trimmed = text.trim();
+    if let Ok(v) = serde_json::from_str::<Value>(trimmed) {
+        return Ok(v);
+    }
+    let start = trimmed.find(|c| c == '{' || c == '[');
+    let end = trimmed.rfind(|c| c == '}' || c == ']');
+    if let (Some(s), Some(e)) = (start, end) {
+        if e > s {
+            return serde_json::from_str::<Value>(&trimmed[s..=e])
+                .map_err(|err| format!("模型输出的 JSON 无法解析: {err}"));
+        }
+    }
+    Err("模型输出里没有找到 JSON".to_string())
+}
+

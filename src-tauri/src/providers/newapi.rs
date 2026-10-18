@@ -839,3 +839,28 @@ fn month_period(days: &[DailyUsage]) -> Option<PeriodUsage> {
         None
     }
 }
+
+// ---------------------------------------------------------------------------
+// 调用模型（价格智能获取等场景）
+// ---------------------------------------------------------------------------
+
+/// 调一次中转站（OpenAI 兼容）对话接口，使用站点访问令牌。
+pub async fn chat(
+    cfg: &ProviderConfig,
+    http: &Http,
+    model: &str,
+    system: &str,
+    user: &str,
+) -> Result<String, String> {
+    let key = api_token(cfg)?;
+    let url = crate::http::join_url(&api_base(cfg), "/v1/chat/completions");
+    openai_chat(http, &url, &key, model, system, user).await
+}
+
+/// 读取中转站 `/v1/models` 的可用模型列表。
+pub async fn list_models(cfg: &ProviderConfig, http: &Http) -> Vec<String> {
+    match api_token(cfg) {
+        Ok(key) => fetch_model_ids(http, &api_base(cfg), &key, "/v1/models").await,
+        Err(_) => Vec::new(),
+    }
+}

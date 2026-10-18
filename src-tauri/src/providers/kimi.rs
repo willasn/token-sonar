@@ -4,7 +4,9 @@
 
 use crate::http::Http;
 use crate::models::{Metric, ProviderConfig, UsageSnapshot};
-use crate::providers::util::{now_iso, pick_f64};
+use crate::providers::util::{
+    api_base, api_token, fetch_model_ids, now_iso, openai_chat, pick_f64,
+};
 
 fn balance_url(cfg: &ProviderConfig) -> String {
     let base = cfg
@@ -106,4 +108,36 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
 pub async fn probe(cfg: &ProviderConfig, http: &Http) -> Result<String, String> {
     let (currency, available, _, _) = read_balance(cfg, http).await?;
     Ok(format!("连接成功，可用余额 {currency} {available:.2}"))
+}
+
+// ---------------------------------------------------------------------------
+// 调用模型（价格智能获取等场景）
+// ---------------------------------------------------------------------------
+
+/// 调一次 Moonshot（OpenAI 兼容）对话接口；基址可能已带 `/v1`。
+pub async fn chat(
+    cfg: &ProviderConfig,
+    http: &Http,
+    model: &str,
+    system: &str,
+    user: &str,
+) -> Result<String, String> {
+    let key = api_token(cfg)?;
+    let base = api_base(cfg);
+    let path = if base.ends_with("/v1") {
+        "/chat/completions"
+    } else {
+        "/v1/chat/completions"
+    };
+    openai_chat(http, &crate::http::join_url(&base, path), &key, model, system, user).await
+}
+
+/// 读取 Moonshot `/v1/models` 的可用模型列表。
+pub async fn list_models(cfg: &ProviderConfig, http: &Http) -> Vec<String> {
+    let Ok(key) = api_token(cfg) else {
+        return Vec::new();
+    };
+    let base = api_base(cfg);
+    let path = if base.ends_with("/v1") { "/models" } else { "/v1/models" };
+    fetch_model_ids(http, &base, &key, path).await
 }

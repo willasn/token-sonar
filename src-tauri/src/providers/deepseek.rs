@@ -1490,3 +1490,28 @@ pub async fn probe(cfg: &ProviderConfig, http: &Http) -> Result<String, String> 
     }
     Ok(format!("连接成功，{}", parts.join("，")))
 }
+
+// ---------------------------------------------------------------------------
+// 调用模型（价格智能获取等场景）
+// ---------------------------------------------------------------------------
+
+/// 调一次 DeepSeek 官方（OpenAI 兼容）对话接口。
+pub async fn chat(
+    cfg: &ProviderConfig,
+    http: &Http,
+    model: &str,
+    system: &str,
+    user: &str,
+) -> Result<String, String> {
+    let key = api_token(cfg)?;
+    let url = crate::http::join_url(&api_base(cfg), "/chat/completions");
+    openai_chat(http, &url, &key, model, system, user).await
+}
+
+/// 读取官方 `/models` 的可用模型列表。
+pub async fn list_models(cfg: &ProviderConfig, http: &Http) -> Vec<String> {
+    match api_token(cfg) {
+        Ok(key) => fetch_model_ids(http, &api_base(cfg), &key, "/models").await,
+        Err(_) => Vec::new(),
+    }
+}
