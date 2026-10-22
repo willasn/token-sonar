@@ -548,10 +548,15 @@ fn git2_pull_backup(repo_dir: &Path, cfg: &SyncConfig) -> Result<RemoteBackup, S
     let branch = branch_of(cfg);
     let branch_ref = format!("refs/heads/{branch}");
 
-    // 远端必须有目标分支，否则没有可恢复的备份
+    // 远端还没有目标分支：首次同步，按空备份处理，由调用方直接推送首个提交
     let branches = git2_list_heads(&url, cfg)?;
     if !branches.iter().any(|b| b == &branch) {
-        return Err(format!("远端还没有 {branch} 分支，暂无可恢复的备份"));
+        return Ok(RemoteBackup {
+            providers: Vec::new(),
+            settings: None,
+            branch,
+            commit: None,
+        });
     }
 
     let repo = git2_open_repo(repo_dir, cfg, &url)?;
@@ -952,8 +957,14 @@ fn git_cli_pull_backup(repo_dir: &Path, cfg: &SyncConfig) -> Result<RemoteBackup
     let url = auth_url(cfg)?;
     let branch = branch_of(cfg);
 
+    // 远端还没有目标分支：首次同步，按空备份处理，由调用方直接推送首个提交
     if !remote_has_branch(cfg, &url, &branch)? {
-        return Err(format!("远端还没有 {branch} 分支，暂无可恢复的备份"));
+        return Ok(RemoteBackup {
+            providers: Vec::new(),
+            settings: None,
+            branch,
+            commit: None,
+        });
     }
 
     prepare_repo(repo_dir, cfg, &url)?;
@@ -1041,6 +1052,8 @@ pub fn push_backup(
 }
 
 /// 从远端仓库拉取备份里的账号列表（只读，不写本机存储）。
+///
+/// 远端还没有目标分支时返回空备份（首次同步），由调用方直接推送首个提交。
 ///
 /// - `https://`：内置引擎为主，失败且有系统 git 时回退；
 /// - `git@` / `ssh://`：必须使用系统 git，缺失时给出明确提示。
