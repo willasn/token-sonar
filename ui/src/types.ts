@@ -160,6 +160,7 @@ export interface SyncConfig {
   repoUrl: string;
   username: string;
   password: string;
+  email: string;
   branch: string;
   lastSyncAt: string;
   lastMessage: string;

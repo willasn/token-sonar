@@ -798,6 +798,7 @@ export async function mockInvoke(cmd: string, args: Record<string, any>): Promis
           repoUrl: "",
           username: "",
           password: "",
+          email: "",
           branch: "main",
           lastSyncAt: "",
           lastMessage: "",
@@ -819,7 +820,7 @@ export async function mockInvoke(cmd: string, args: Record<string, any>): Promis
     case "pull_remote_backup": {
       await delay(700);
       const cfg = db.sync || {};
-      if (!String(cfg.repoUrl || "").trim()) throw new Error("请先在「Git 同步」里配置并保存仓库");
+      if (!String(cfg.repoUrl || "").trim()) throw new Error("请先在「Git 配置同步」里配置并保存仓库");
       // 演示模式：远端备份等同于本机数据，因此不会产生冲突
       return {
         providers: db.providers.slice(),
@@ -831,7 +832,7 @@ export async function mockInvoke(cmd: string, args: Record<string, any>): Promis
     case "sync_to_repo": {
       await delay(1200);
       const cfg = db.sync || {};
-      if (!String(cfg.repoUrl || "").trim()) throw new Error("请先在「Git 同步」里配置并保存仓库");
+      if (!String(cfg.repoUrl || "").trim()) throw new Error("请先在「Git 配置同步」里配置并保存仓库");
       let list: ProviderConfig[] = Array.isArray(args.providers) ? args.providers.slice() : db.providers.slice();
       // 不含凭证模式：与后端一致，落库前抹掉密码与各类密钥
       if (args.includeCredentials === false) {

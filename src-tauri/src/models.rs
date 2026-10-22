@@ -595,6 +595,9 @@ pub struct SyncConfig {
     /// 密码或访问令牌（GitHub / GitLab 等用 Personal Access Token 代替密码）
     #[serde(default)]
     pub password: String,
+    /// 提交作者邮箱；留空则使用内置占位邮箱
+    #[serde(default)]
+    pub email: String,
     #[serde(default = "default_sync_branch")]
     pub branch: String,
     /// 最近一次同步成功的时间
@@ -611,6 +614,7 @@ impl Default for SyncConfig {
             repo_url: String::new(),
             username: String::new(),
             password: String::new(),
+            email: String::new(),
             branch: default_sync_branch(),
             last_sync_at: String::new(),
             last_message: String::new(),

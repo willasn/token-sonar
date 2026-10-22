@@ -444,7 +444,7 @@ const zh: Record<string, string> = {
   "settings.updateUnsupported": "演示模式不支持应用内更新",
 
   /* ------------------------------ Git 同步 ---------------------------- */
-  "sync.cardTitle": "Git 仓库同步",
+  "sync.cardTitle": "Git 配置同步",
   "sync.cardDesc": "在本机与自有仓库之间合并账号数据；点「同步」选择同步范围，冲突时由你选择保留哪一版",
   "sync.repoUrl": "仓库地址",
   "sync.repoUrlPh": "https://github.com/you/tokensonar-backup.git",
@@ -452,6 +452,8 @@ const zh: Record<string, string> = {
   "sync.usernamePh": "GitHub / GitLab 用户名",
   "sync.password": "密码 / 访问令牌",
   "sync.passwordPh": "Personal Access Token（需仓库读写权限）",
+  "sync.email": "邮箱",
+  "sync.emailPh": "提交记录里显示的作者邮箱（可留空）",
   "sync.branch": "分支",
   "sync.branchPh": "main",
   "sync.warning":
@@ -954,7 +956,7 @@ const en: Record<string, string> = {
   "settings.updateUnsupported": "In-app updates are unavailable in demo mode",
 
   /* ----------------------------- Git backup --------------------------- */
-  "sync.cardTitle": "Git backup",
+  "sync.cardTitle": "Git config sync",
   "sync.cardDesc": "Merge account data between this machine and your own repository; click Sync to choose the scope, and pick the winner on conflicts",
   "sync.repoUrl": "Repository URL",
   "sync.repoUrlPh": "https://github.com/you/tokensonar-backup.git",
@@ -962,6 +964,8 @@ const en: Record<string, string> = {
   "sync.usernamePh": "GitHub / GitLab user name",
   "sync.password": "Password / access token",
   "sync.passwordPh": "Personal access token with repo read & write scope",
+  "sync.email": "Email",
+  "sync.emailPh": "Author email shown in commits (optional)",
   "sync.branch": "Branch",
   "sync.branchPh": "main",
   "sync.warning": "The export may contain account tokens and cloud access keys — always use a private repository. https URLs use the built-in engine and need no Git install; git@ / ssh:// URLs require the Git CLI on this machine.",

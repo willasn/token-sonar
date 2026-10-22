@@ -100,6 +100,7 @@ interface SyncFormState {
   repoUrl: string;
   username: string;
   password: string;
+  email: string;
   branch: string;
 }
 
@@ -201,6 +202,7 @@ export function Settings() {
     repoUrl: "",
     username: "",
     password: "",
+    email: "",
     branch: "main",
   });
   const [busy, setBusy] = useState(false);
@@ -216,6 +218,7 @@ export function Settings() {
           repoUrl: cfg.repoUrl || "",
           username: cfg.username || "",
           password: cfg.password || "",
+          email: cfg.email || "",
           branch: cfg.branch || "main",
         });
       })
@@ -231,6 +234,7 @@ export function Settings() {
     repoUrl: form.repoUrl.trim(),
     username: form.username.trim(),
     password: form.password,
+    email: form.email.trim(),
     branch: form.branch.trim() || "main",
     lastSyncAt: syncCfg?.lastSyncAt || "",
     lastMessage: syncCfg?.lastMessage || "",
@@ -628,6 +632,17 @@ export function Settings() {
                     placeholder={tr("sync.passwordPh")}
                     autoComplete="off"
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  />
+                </SyncField>
+                <SyncField label={tr("sync.email")}>
+                  <input
+                    className="input"
+                    data-name="email"
+                    type="email"
+                    value={form.email}
+                    placeholder={tr("sync.emailPh")}
+                    autoComplete="off"
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
                   />
                 </SyncField>
                 <SyncField label={tr("sync.branch")}>

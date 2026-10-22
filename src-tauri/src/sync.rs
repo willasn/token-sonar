@@ -73,7 +73,7 @@ fn is_ssh_url(url: &str) -> bool {
 fn clean_remote_url(cfg: &SyncConfig) -> Result<String, String> {
     let url = cfg.repo_url.trim().to_string();
     if url.is_empty() {
-        return Err("请先在「Git 同步」里填写仓库地址".to_string());
+        return Err("请先在「Git 配置同步」里填写仓库地址".to_string());
     }
     // ssh 地址没有 http userinfo，直接返回（不走背后的 %40 处理会破坏 ssh 语法）
     if url.starts_with("https://") || url.starts_with("http://") || is_ssh_url(&url) {
@@ -106,6 +106,16 @@ fn branch_of(cfg: &SyncConfig) -> String {
         "main".to_string()
     } else {
         b.to_string()
+    }
+}
+
+/// 提交作者邮箱：用户填了就用用户的，否则退回内置占位邮箱。
+fn author_email(cfg: &SyncConfig) -> String {
+    let e = cfg.email.trim();
+    if e.is_empty() {
+        AUTHOR_EMAIL.to_string()
+    } else {
+        e.to_string()
     }
 }
 
@@ -500,7 +510,7 @@ fn git2_push_backup(
         });
     }
 
-    let sig = git2::Signature::now(AUTHOR_NAME, AUTHOR_EMAIL)
+    let sig = git2::Signature::now(AUTHOR_NAME, &author_email(cfg))
         .map_err(|e| humanize(&format!("构造提交身份失败：{}", e.message()), cfg))?;
     let message = format!("chore(sync): TokenSonar 数据备份 {}", now_str());
     let parents: Vec<&git2::Commit> = parent.iter().collect();
@@ -607,8 +617,24 @@ fn git(dir: Option<&Path>) -> Command {
 /// 执行一条 git 命令，超时则杀掉子进程。成功返回输出，失败返回输出作为错误。
 fn run(dir: Option<&Path>, args: &[&str], timeout: Duration) -> Result<String, String> {
     let mut cmd = git(dir);
-    cmd.args(args)
-        .stdin(Stdio::null())
+    cmd.args(args);
+    run_cmd(cmd, args.join(" "), timeout)
+}
+
+/// 以用户填写的提交邮箱提交；未填则沿用内置占位邮箱。
+fn run_commit(repo_dir: &Path, args: &[&str], timeout: Duration, email: &str) -> Result<String, String> {
+    let mut cmd = git(Some(repo_dir));
+    cmd.args(args);
+    let email = email.trim();
+    if !email.is_empty() {
+        cmd.env("GIT_AUTHOR_EMAIL", email)
+            .env("GIT_COMMITTER_EMAIL", email);
+    }
+    run_cmd(cmd, args.join(" "), timeout)
+}
+
+fn run_cmd(mut cmd: Command, label: String, timeout: Duration) -> Result<String, String> {
+    cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
@@ -622,7 +648,7 @@ fn run(dir: Option<&Path>, args: &[&str], timeout: Duration) -> Result<String, S
                 if Instant::now() >= deadline {
                     let _ = child.kill();
                     let _ = child.wait();
-                    return Err(format!("git {} 执行超时", args.join(" ")));
+                    return Err(format!("git {label} 执行超时"));
                 }
                 thread::sleep(Duration::from_millis(80));
             }
@@ -650,11 +676,7 @@ fn run(dir: Option<&Path>, args: &[&str], timeout: Duration) -> Result<String, S
         Ok(text)
     } else {
         Err(if text.is_empty() {
-            format!(
-                "git {} 失败（退出码 {:?}）",
-                args.join(" "),
-                out.status.code()
-            )
+            format!("git {label} 失败（退出码 {:?}）", out.status.code())
         } else {
             text
         })
@@ -883,8 +905,13 @@ fn git_cli_push_backup(
     let mut message = String::new();
     if dirty {
         let commit_msg = format!("chore(sync): TokenSonar 数据备份 {}", now_str());
-        run(Some(repo_dir), &["commit", "-m", &commit_msg], SHORT)
-            .map_err(|e| humanize(&format!("提交失败：{e}"), cfg))?;
+        run_commit(
+            repo_dir,
+            &["commit", "-m", &commit_msg],
+            SHORT,
+            &author_email(cfg),
+        )
+        .map_err(|e| humanize(&format!("提交失败：{e}"), cfg))?;
     }
 
     let push = run(
