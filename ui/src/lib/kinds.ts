@@ -32,6 +32,10 @@ export interface KindInfo {
   api: KindField;
   /** 登录模式的凭证字段（仅 DeepSeek 有） */
   login?: KindField;
+  /** 登录模式点击「登录获取」时调用的后端命令（表驱动，避免按类型写分支） */
+  loginCommand?: "start_deepseek_login" | "start_mimo_login";
+  /** 登录失败提示里的平台名（i18n key） */
+  loginTarget?: string;
   /** 中转站额度是站点积分，需要货币 / 换算比设置 */
   currencyFields?: boolean;
   /** 该渠道用 Access Key ID + Secret Key 双字段签名鉴权 */
@@ -109,6 +113,8 @@ export const KIND_INFO: Record<ProviderKind, KindInfo> = {
       placeholder: "form.loginPlaceholder",
       hint: "form.platformTokenHint",
     },
+    loginCommand: "start_deepseek_login",
+    loginTarget: "form.deepseekPlatform",
   },
   newapi: {
     name: "kind.newapi.name",
@@ -176,6 +182,26 @@ export const KIND_INFO: Record<ProviderKind, KindInfo> = {
     independentUsageSources: true,
     usageScope: "usage.paygScope",
   },
+  mimo: {
+    name: "kind.mimo.name",
+    desc: "kind.mimo.desc",
+    icon: "MI",
+    accent: "#ff6900",
+    chip: "chip-accent",
+    kindLabel: "providers.kindMimo",
+    detailLabel: "detail.kindMimo",
+    official: true,
+    console: "https://platform.xiaomimimo.com/#/console/balance",
+    url: { label: "form.apiUrl", hint: "form.mimoUrlHint", placeholder: "https://api.xiaomimimo.com" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.mimoApiHint" },
+    login: {
+      label: "form.mimoCookie",
+      placeholder: "form.mimoCookiePlaceholder",
+      hint: "form.mimoCookieHint",
+    },
+    loginCommand: "start_mimo_login",
+    loginTarget: "form.mimoPlatform",
+  },
 };
 
 const PLAN_INFO: Record<string, Partial<KindInfo>> = {
@@ -211,7 +237,7 @@ export function providerInfo(provider: { kind: string; planType?: ProviderConfig
   return info.plans && provider.planType ? { ...info, ...PLAN_INFO[provider.planType] } : info;
 }
 
-export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan"];
+export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan", "mimo"];
 
 export function usageValue(snap: UsageSnapshot | null, value: number | null | undefined): number | null {
   return snap && kindInfo(snap.kind).independentUsageSources && (value == null || value < 0) ? null : value ?? null;
@@ -241,6 +267,7 @@ export const MODES_BY_KIND: Record<ProviderKind, AccessModeKey[]> = {
   kimi: ["api"],
   bailian: ["api"],
   hunyuan: ["api"],
+  mimo: ["login"],
 };
 
 interface ModeInfo {
@@ -277,6 +304,9 @@ export const MODE_INFO: Record<string, Partial<Record<AccessModeKey, ModeInfo>>>
       gets: "mode.volcengine.api.gets",
     },
   },
+  mimo: {
+    login: { label: "mode.login.label", desc: "mode.mimo.login.desc", gets: "mode.mimo.login.gets" },
+  },
 };
 
 export const FILTERS = [
@@ -288,6 +318,7 @@ export const FILTERS = [
   { key: "kimi", label: "filter.kimi" },
   { key: "bailian", label: "filter.bailian" },
   { key: "hunyuan", label: "filter.hunyuan" },
+  { key: "mimo", label: "filter.mimo" },
   { key: "error", label: "filter.error" },
   { key: "off", label: "filter.off" },
 ];

@@ -31,6 +31,7 @@
     "allow-test-sync-connection",
     "allow-pull-remote-backup",
     "allow-sync-to-repo",
-    "allow-start-deepseek-login"
+    "allow-start-deepseek-login",
+    "allow-start-mimo-login"
   ]
 }

@@ -138,6 +138,7 @@ TokenSonar/
             ├── volcengine.rs # 火山方舟（AK/SK 签名）适配器
             ├── bailian.rs    # 阿里云百炼（BSS 账单、团队 Credits）适配器
             ├── bailian_cli.rs # 百炼个人 Harness / Coding 官方 CLI 只读查询
+            ├── mimo.rs       # 小米 MiMo（登录 Cookie → 控制台接口）适配器
             └── util.rs       # 字段无关的容错 JSON 解析工具
 ```
 
@@ -204,6 +205,8 @@ TokenSonar/
 - `glm.rs`：账户汇总接口读余额 / 累计消费，额度接口读套餐等级与 5 小时 / 周 / MCP 使用率。
 - `volcengine.rs`：Signature V4（HMAC-SHA256）签名调用火山引擎管控面 OpenAPI，
   读账户余额（billing）、Coding Plan / Agent Plan 套餐与模型信息（ark）。
+- `mimo.rs`：登录 Cookie 会话调用小米 MiMo 控制台内部接口，读余额、逐日逐模型用量、
+  月度账单与 Token Plan 额度；控制台接口无公开文档，解析全部容错。
 - `util.rs`：`to_f64` / `pick` / `pick_f64` / `pick_string` / `record_arrays` /
   `find_usage_records` / `record_date` / `recent_dates` 等容错工具。
 

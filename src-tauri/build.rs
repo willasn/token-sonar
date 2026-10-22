@@ -27,6 +27,7 @@ const COMMANDS: &[&str] = &[
     "sync_to_repo",
     "start_deepseek_login",
     "deepseek_login_token",
+    "start_mimo_login",
 ];
 
 fn main() {

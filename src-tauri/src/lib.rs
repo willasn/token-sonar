@@ -43,6 +43,7 @@ pub fn run() {
             commands::sync_to_repo,
             login::start_deepseek_login,
             login::deepseek_login_token,
+            login::start_mimo_login,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TokenSonar");

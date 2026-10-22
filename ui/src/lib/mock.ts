@@ -149,6 +149,27 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
     updatedAt: "2026-09-01 10:00:00",
   },
   {
+    id: "pv_demo_mimo",
+    name: "小米 MiMo（演示）",
+    kind: "mimo",
+    enabled: true,
+    baseUrl: "https://api.xiaomimimo.com",
+    authType: "token",
+    accessMode: "login",
+    token: "",
+    username: "",
+    password: "",
+    sessionToken: "mock_cookie=demo",
+    icon: "MI",
+    accent: "#ff6900",
+    currency: "CNY",
+    quotaPerUnit: 500000,
+    displayInCurrency: true,
+    notes: "登录授权：读余额、逐日逐模型用量、月度账单与 Token Plan 额度（演示数据）",
+    createdAt: "2026-09-20 10:00:00",
+    updatedAt: "2026-09-20 10:00:00",
+  },
+  {
     id: "pv_demo_newapi",
     name: "中转站 · New API",
     kind: "newapi",
@@ -234,6 +255,7 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
 ];
 
 const DEMO_MODELS_DS = ["deepseek-chat", "deepseek-reasoner"];
+const DEMO_MODELS_MIMO = ["mimo-v2.6-pro", "mimo-v2.6-flash"];
 const DEMO_MODELS_NA = [
   "gpt-4o-mini",
   "claude-3-5-sonnet",
@@ -302,9 +324,14 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
   const isGlm = p.kind === "glm";
   const isVe = p.kind === "volcengine";
   const isKimi = p.kind === "kimi";
-  const hasUsage = (isDs && p.accessMode === "login" && !!p.sessionToken) || p.kind === "newapi" || !!kindInfo(p.kind).independentUsageSources;
+  const isMimo = p.kind === "mimo";
+  const hasUsage =
+    (isDs && p.accessMode === "login" && !!p.sessionToken) ||
+    (isMimo && p.accessMode === "login" && !!p.sessionToken) ||
+    p.kind === "newapi" ||
+    !!kindInfo(p.kind).independentUsageSources;
   const kimiCurrency = isKimi && new URL(p.baseUrl || "https://api.moonshot.cn").hostname === "api.moonshot.ai" ? "USD" : "CNY";
-  const pool = isDs ? DEMO_MODELS_DS : DEMO_MODELS_NA;
+  const pool = isDs ? DEMO_MODELS_DS : isMimo ? DEMO_MODELS_MIMO : DEMO_MODELS_NA;
 
   let tokensTotal = 0;
   let costTotal = 0;
@@ -349,8 +376,8 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
     fetchedAt: nowStamp(),
     ok: true,
     error: null,
-    account: isDs || isKimi ? null : isVe ? "2100000001" : isGlm ? "demo@bigmodel.cn" : "demo",
-    balance: isKimi ? 88.6 : isDs ? 128.42 : isVe ? 986.42 : isGlm ? 42.5 : 36.75,
+    account: isDs || isKimi ? null : isMimo ? "demo@mimo.example.com" : isVe ? "2100000001" : isGlm ? "demo@bigmodel.cn" : "demo",
+    balance: isKimi ? 88.6 : isDs ? 128.42 : isMimo ? 286.5 : isVe ? 986.42 : isGlm ? 42.5 : 36.75,
     balanceRaw: p.kind === "newapi" ? 18375000 : null,
     granted: isDs ? 50 : null,
     used: hasUsage ? Number((costTotal * (isDs ? 1 : 1.6)).toFixed(2)) : isGlm ? 57.5 : null,
@@ -366,7 +393,9 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
     } : null,
     days: days,
     models: models,
-    quotas: [],
+    quotas: isMimo
+      ? [{ label: "Token Plan · 套餐额度（演示）", used: 1_200_000_000, quota: 4_100_000_000, percent: 29, resetAt: "2026-11-20T00:00:00+08:00" }]
+      : [],
     logs: [],
     metrics: [],
     apiKeys: [],
@@ -425,6 +454,18 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
       { label: `可用余额（${kimiCurrency}）`, value: "88.60", hint: "Moonshot 官方余额接口" },
       { label: `代金券余额（${kimiCurrency}）`, value: "20.00", hint: null },
       { label: `现金余额（${kimiCurrency}）`, value: "68.60", hint: null },
+    ];
+  } else if (isMimo) {
+    snap.metrics = [
+      { label: "余额（CNY）", value: "286.50", hint: "演示数据；按量付费账户余额" },
+      { label: "充值余额", value: "200.00", hint: null },
+      { label: "赠送余额", value: "86.50", hint: null },
+      { label: "Token Plan 套餐", value: "Lite（演示）", hint: "订阅套餐与按量付费余额不互通" },
+      { label: "套餐到期时间", value: "2026-11-20 00:00:00", hint: null },
+      { label: "平台累计消费（CNY）", value: "128.40", hint: "演示数据；控制台账单明细累计值" },
+      { label: "平台累计 Token", value: "18600000", hint: "含缓存输入、批量推理与 ASR（演示）" },
+      { label: "本月消费（CNY）", value: costTotal.toFixed(2), hint: "演示数据；当月已出账账单" },
+      { label: "本月 Token", value: String(tokensTotal), hint: String(reqTotal) + " 次请求（演示）" },
     ];
   } else if (isDs) {
     snap.account = p.username || "demo@deepseek.com";
@@ -689,6 +730,9 @@ export async function mockInvoke(cmd: string, args: Record<string, any>): Promis
     case "start_deepseek_login":
       await delay(900);
       return "mock-platform-token-" + Date.now().toString(16);
+    case "start_mimo_login":
+      await delay(900);
+      return "mock_cookie=token-" + Date.now().toString(16);
     case "deepseek_login_token":
       return null;
     case "refresh_provider": {

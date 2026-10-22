@@ -226,7 +226,14 @@ function ProviderFormBody({ model }: { model: FormModel }) {
 
   /** 打开外置登录窗口取回凭证（后端把「捕获 / 验证」进度实时推过来） */
   async function runLogin() {
-    const credName = t("form.platformToken");
+    const credName = t(cred.label);
+    const command = info.loginCommand;
+    if (!command) {
+      const msg = t("form.loginUnsupported");
+      model.setNote("✗ " + msg, "danger");
+      toast(msg, "error");
+      return;
+    }
     setLoginBusy(true);
     model.setNote(t("form.loginOpened"));
     const unlisten = await listen<string>("login-progress", (payload) => {
@@ -234,7 +241,7 @@ function ProviderFormBody({ model }: { model: FormModel }) {
       if (msg) model.setNote(msg);
     });
     try {
-      const token = await api.startDeepseekLogin();
+      const token = await api.startLogin(command);
       model.setDraft({ ...model.draft, sessionToken: token });
       model.setNote("✓ " + t("form.loginOk", { v: credName }), "ok");
       toast(t("form.loginSuccess", { v: credName }), "ok");
@@ -537,7 +544,7 @@ export function ProviderFormModal(props: {
               if (!String(d.sessionToken || "").trim()) {
                 toast(
                   t("form.needLogin", {
-                    v: kindInfo(d.kind).official ? t("form.deepseekPlatform") : t("form.site"),
+                    v: t(kindInfo(d.kind).loginTarget || "form.site"),
                   }),
                   "error"
                 );

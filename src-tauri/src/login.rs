@@ -24,6 +24,9 @@ use crate::http::Http;
 const DEEPSEEK_WINDOW: &str = "deeplogin";
 const MAIN_WINDOW: &str = "main";
 const DEEPSEEK_LOGIN_URL: &str = "https://platform.deepseek.com/usage";
+const MIMO_WINDOW: &str = "mimologin";
+const MIMO_LOGIN_URL: &str = "https://platform.xiaomimimo.com/console/balance";
+const MIMO_PLATFORM: &str = "https://platform.xiaomimimo.com/";
 const TITLE_PREFIX: &str = "TLTOKEN|";
 /// 登录进度事件：发给主窗口，避免表单停在「等待登录」上没有任何反馈
 const PROGRESS_EVENT: &str = "login-progress";
@@ -465,5 +468,122 @@ async fn wait_for_token(app: &AppHandle) -> Result<String, String> {
         }
 
         tokio::time::sleep(POLL).await;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 小米 MiMo：Cookie 会话通道
+// ---------------------------------------------------------------------------
+
+/// 打开小米 MiMo 外置登录窗口，等待登录完成后取回 `platform.xiaomimimo.com` 的 Cookie。
+///
+/// 小米账号登录会跳到 `account.xiaomi.com` SSO，凭证最终落在平台域 Cookie 里
+/// （通常带 HttpOnly，脚本读不到），因此这里由 Rust 直接向 WebView 的 Cookie 仓库索取。
+#[tauri::command]
+pub async fn start_mimo_login(app: AppHandle) -> Result<String, String> {
+    let label = MIMO_WINDOW.to_string();
+
+    if let Some(old) = app.get_webview_window(&label) {
+        let _ = old.close();
+    }
+
+    let url: tauri::Url = MIMO_LOGIN_URL
+        .parse()
+        .map_err(|_| format!("登录地址非法: {MIMO_LOGIN_URL}"))?;
+
+    let window = WebviewWindowBuilder::new(&app, label.clone(), WebviewUrl::External(url))
+        .title("登录小米 MiMo 开放平台")
+        .inner_size(1100.0, 820.0)
+        .center()
+        .resizable(true)
+        .build()
+        .map_err(|e| format!("打开登录窗口失败: {e}"))?;
+    window
+        .show()
+        .map_err(|e| format!("显示登录窗口失败: {e}"))?;
+
+    let result = wait_for_mimo_cookie(&app).await;
+
+    if let Some(w) = app.get_webview_window(&label) {
+        let _ = w.close();
+    }
+    result
+}
+
+fn cookie_header(cookies: &[tauri::webview::Cookie<'static>]) -> String {
+    cookies
+        .iter()
+        .filter(|c| !c.name().trim().is_empty())
+        .map(|c| format!("{}={}", c.name(), c.value()))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+async fn wait_for_mimo_cookie(app: &AppHandle) -> Result<String, String> {
+    let http = Http::new()?;
+    let platform: tauri::Url = MIMO_PLATFORM
+        .parse()
+        .map_err(|_| format!("平台地址非法: {MIMO_PLATFORM}"))?;
+
+    let started = Instant::now();
+    let mut last_header = String::new();
+    let mut last_progress = String::new();
+    let mut last_error: Option<String> = None;
+    let mut last_beat: u64 = 0;
+
+    loop {
+        let Some(win) = app.get_webview_window(MIMO_WINDOW) else {
+            return Err(match last_error {
+                Some(e) => format!("登录窗口已关闭（最后一次校验：{e}）"),
+                None => "登录窗口已关闭".to_string(),
+            });
+        };
+
+        // 登录前也会有匿名 Cookie，因此「拿到 Cookie」不等于「登录成功」，
+        // 必须再请求一次余额接口校验。
+        if let Ok(cookies) = win.cookies_for_url(platform.clone()) {
+            let header = cookie_header(&cookies);
+            if !header.is_empty() && header != last_header {
+                last_header = header.clone();
+                set_progress(app, "已获取登录 Cookie，正在校验…", &mut last_progress);
+                match crate::providers::mimo::verify_cookie(&http, &header).await {
+                    Ok(_) => {
+                        emit_progress(app, "验证通过，正在回填…");
+                        return Ok(header);
+                    }
+                    Err(e) => {
+                        let msg = format!("Cookie 校验未通过（{e}），继续等待登录…");
+                        set_progress(app, &msg, &mut last_progress);
+                        last_error = Some(e);
+                    }
+                }
+            }
+        }
+
+        if started.elapsed() > TIMEOUT {
+            return Err(match last_error {
+                Some(e) => format!("等待登录超时（最后一次校验：{e}），请重试"),
+                None => "等待登录超时，请重试".to_string(),
+            });
+        }
+
+        let waited = started.elapsed().as_secs() / 15 * 15;
+        if waited >= 15 && waited != last_beat {
+            last_beat = waited;
+            set_progress(
+                app,
+                &format!("仍在等待登录（已等待 {waited} 秒），请在登录窗口完成登录…"),
+                &mut last_progress,
+            );
+        }
+
+        tokio::time::sleep(POLL).await;
+    }
+}
+
+fn set_progress(app: &AppHandle, msg: &str, last: &mut String) {
+    if msg != last {
+        *last = msg.to_string();
+        emit_progress(app, msg);
     }
 }

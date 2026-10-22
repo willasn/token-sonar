@@ -80,6 +80,6 @@ export const api = {
   syncToRepo: (providers: ProviderConfig[], includeCredentials: boolean) =>
     invoke<SyncResult>("sync_to_repo", { providers, includeCredentials }),
 
-  startDeepseekLogin: () => invoke<string>("start_deepseek_login"),
+  startLogin: (command: "start_deepseek_login" | "start_mimo_login") => invoke<string>(command),
   deepseekLoginToken: () => invoke<string | null>("deepseek_login_token"),
 };

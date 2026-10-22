@@ -106,6 +106,7 @@
 | **腾讯混元 / TokenHub** | `api` | 腾讯云 SecretId + SecretKey（AK/SK，非模型 API Key） | 默认 `https://tokenhub.tencentcloudapi.com`，固定广州官方管控面 | 腾讯云整体余额（非混元专属）、今日 / 本月 TokenHub 账户与模型 Token（含其他模型，非按量账单费用）；仅可见企业版 `enterprise` credits / `enterprise-auto` tokens。个人 Coding Plan、通用 / Hy Token Plan 额度当前公开接口不可读取 |
 | **阿里云百炼** | `api`，按套餐配置 | BSS / Token Plan 团队：阿里云 AK/SK；个人 / Coding：明确绑定官方 CLI 控制台 Profile | 固定中国站 BSS 或北京 ModelStudio 管控面 | BSS 账户余额及已出账费用 / Token；团队当前订阅席位与共享包 Credits（非货币 / Token）；Coding 三周期调用次数；个人独立 Harness 权益，个人月 Credits 未知 |
 | **火山方舟** | `api` | Access Key ID + Secret Access Key（AK/SK） | 默认 `https://ark.cn-beijing.volcengineapi.com`，可改（只用于推导签名地域） | 管控面 OpenAPI（AK/SK 签名）：费用中心余额（可用 / 现金 / 冻结 / 欠费 / 信控额度）、Coding Plan 与 Agent Plan 套餐档位与有效期、套餐用量限额（Agent Plan 的 AFP 窗口 / Coding Plan 的 5 小时、周、月使用率）、已开通模型、Coding Plan 可用模型（不提供逐日用量） |
+| **小米 MiMo** | `login` | 平台登录 Cookie（登录窗口由 Rust 读取 `platform.xiaomimimo.com` 的 Cookie） | 固定控制台 `https://platform.xiaomimimo.com`；API 基址 `https://api.xiaomimimo.com` 仅作展示 | 控制台内部接口：账户余额（充值 / 赠送 / 冻结 / 透支）、逐日逐模型费用 / Token / 请求数、月度账单、联网插件用量、个人 Token Plan 套餐与额度、API Keys。官方 API Key 只有 `/v1/models` 与推理接口，不提供余额 / 用量，故不设 `api` 接入方式 |
 
 旧配置迁移：加载时若没有 `accessMode`，按「有会话凭证即视为登录方式」推断，并把历史的
 `platformToken` 归位到 `sessionToken`（`models.rs` 的 `normalize()`，`storage.rs` 载入时执行）。
@@ -126,11 +127,13 @@ New API 已移除「登录授权」链路，历史登录型配置会被 `normali
   - 阿里云百炼 `api`：套餐下拉区分默认 BSS、Token Plan 团队 / 个人、Coding Plan；BSS 与团队使用 **阿里云 AccessKey ID + AccessKey Secret**，非百炼 API Key。BSS 固定中国站，只读权限最小集为 `bssapi:DescribeInstanceBill` 与 `bss:DescribeAcccount`，`Resource: "*"`（`Acccount` 为官方拼写）；团队固定北京 ModelStudio 管控面，权限为 `AliyunTokenPlanReadOnlyAccess`。个人 / Coding 可保存可选 API Key，但测试和刷新明确返回未接入，不发送推理请求。
   - 火山方舟 `api`：**Access Key ID + Secret Access Key** 两个字段，火山引擎控制台「API 访问密钥」创建；
     只保存本机，密钥需具备费用中心（billing）与方舟（ark）的只读权限（方舟管控面只认 AK/SK 签名，不支持方舟 API Key）
+  - 小米 MiMo `login`：**平台登录 Cookie**，「登录获取」打开小米账号登录窗口，后端自动读取并校验；
+    字段可手动粘贴 Cookie 兜底，Cookie 仅保存本机
 - New API 专属：展示货币、积分兑换比、是否换算为货币
 - 已移除「用户名 + 密码」表单入口：登录常有人机验证，服务端直连接口过不去，DeepSeek 统一走弹窗登录
   （账号密码直连仅作为后端能力保留，UI 未暴露）；New API 只保留系统访问令牌，不再有网页登录授权
 
-### 6.3 外置登录窗口（DeepSeek 平台授权）
+### 6.3 外置登录窗口（DeepSeek / 小米 MiMo）
 
 平台登录可能出现短信验证码、滑块等人机验证，服务端接口无法完成，因此改为开一个真实窗口让用户自己登录：
 
@@ -156,6 +159,15 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 
 > New API 中转站不再提供登录窗口：站点域名由用户填写、无法预先写进 capability，
 > 且用户级接口还要求 `New-Api-User` 头配合，链路脆弱。现在只保留系统访问令牌一种接入方式。
+
+**小米 MiMo（Cookie 通道）**：点「登录获取」打开窗口 `mimologin`，加载
+`https://platform.xiaomimimo.com/console/balance`（未登录会跳转 `account.xiaomi.com` SSO）。
+不注入脚本：后端每 400ms 调 `WebviewWindow::cookies_for_url("https://platform.xiaomimimo.com/")`
+读取 Cookie（含 HttpOnly），拼成 `Cookie` 头请求一次 `GET /api/v1/balance`，
+业务 `code == 0` 才采纳并回填 `sessionToken`。之后所有取数都走 `/api/v1/*`：
+`balance`、`usage`、`usage/detail/list`、`usage/plugin/list`、`usage/bill/monthly`、
+`tokenPlan/detail`、`tokenPlan/usage`、`apiKeys`、`userProfile`。
+登录失效（HTTP 401 / code 401）时统一提示重新「登录获取」。
 
 ### 6.4 Keys
 - 详情页按 API Keys（大模型调用）、AKSK、系统访问令牌分类；每条凭证有名称，留空默认为「默认」（旧记录亦按默认展示）

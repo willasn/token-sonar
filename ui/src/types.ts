@@ -1,6 +1,6 @@
 /* TokenSonar · 与后端 models.rs 对齐的类型定义（serde 统一 camelCase） */
 
-export type ProviderKind = "deepseek" | "newapi" | "glm" | "volcengine" | "kimi" | "bailian" | "hunyuan";
+export type ProviderKind = "deepseek" | "newapi" | "glm" | "volcengine" | "kimi" | "bailian" | "hunyuan" | "mimo";
 export type AuthType = "token" | "password";
 export type AccessMode = "api" | "login";
 export type Currency = string;

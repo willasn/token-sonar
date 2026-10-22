@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-start-mimo-login"
+description = "Enables the start_mimo_login command without any pre-configured scope."
+commands.allow = ["start_mimo_login"]
+
+[[permission]]
+identifier = "deny-start-mimo-login"
+description = "Denies the start_mimo_login command without any pre-configured scope."
+commands.deny = ["start_mimo_login"]

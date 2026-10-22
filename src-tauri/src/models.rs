@@ -30,6 +30,9 @@ pub enum ProviderKind {
     Bailian,
     #[serde(rename = "hunyuan")]
     Hunyuan,
+    /// 小米 MiMo 开放平台（网页登录读取余额、用量与 Token Plan 额度）
+    #[serde(rename = "mimo")]
+    Mimo,
 }
 
 impl ProviderKind {
@@ -42,6 +45,7 @@ impl ProviderKind {
             ProviderKind::Volcengine => "volcengine",
             ProviderKind::Bailian => "bailian",
             ProviderKind::Hunyuan => "hunyuan",
+            ProviderKind::Mimo => "mimo",
         }
     }
 
@@ -55,6 +59,7 @@ impl ProviderKind {
             ProviderKind::Volcengine => "https://ark.cn-beijing.volcengineapi.com",
             ProviderKind::Bailian => "https://business.aliyuncs.com",
             ProviderKind::Hunyuan => "https://tokenhub.tencentcloudapi.com",
+            ProviderKind::Mimo => "https://api.xiaomimimo.com",
         }
     }
 
@@ -67,6 +72,7 @@ impl ProviderKind {
             ProviderKind::Volcengine => "火山方舟",
             ProviderKind::Bailian => "阿里云百炼",
             ProviderKind::Hunyuan => "腾讯混元 / TokenHub",
+            ProviderKind::Mimo => "小米 MiMo",
         }
     }
 
