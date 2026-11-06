@@ -56,7 +56,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwODU2QUY3QjI2REY1QzgKUldUSTlXMnk5MnFGVUtiUVdpSUpRWWRkU08vYS9BMloxa2lkR0p5UEhUWXZhTjc2VmZMbUFybUkK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDA5NkU2OTIwMDM2OTgyNEYKUldSUGdta0RJR2x1Q1MxZng4ZEQ4SE83VzZnU2ZIdkhzbEQ2RUQ1cnB5enBSV0kvOW0vdVVYblgK",
       "endpoints": [
         "https://github.com/willasn/token-sonar/releases/latest/download/latest.json"
       ]

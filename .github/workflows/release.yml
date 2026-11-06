@@ -72,10 +72,33 @@ jobs:
       - name: Cache Rust
         uses: swatinem/rust-cache@v2
         with:
+          # 构建失败也保存缓存：否则每次失败都要从零编译一遍
+          cache-on-failure: true
           workspaces: "./src-tauri -> target"
+
+      # Windows 首次打包会下载 WiX / NSIS 工具（几十 MB），缓存后二次构建可跳过
+      - name: Cache Tauri bundler tools (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: C:\Users\runneradmin\AppData\Local\tauri
+          key: tauri-bundler-tools-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            tauri-bundler-tools-${{ runner.os }}-
 
       - name: Install frontend dependencies
         run: npm ci
+
+      # 密钥缺失时提前失败，避免编译 5 分钟后才在签名环节报错
+      - name: Check updater signing key
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "缺少 secrets.TAURI_SIGNING_PRIVATE_KEY，无法签名更新包" >&2
+            exit 1
+          fi
 
       - name: Build app and attach bundles to release
         uses: tauri-apps/tauri-action@v0
