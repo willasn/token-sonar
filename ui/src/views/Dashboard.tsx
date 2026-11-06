@@ -209,11 +209,15 @@ export function Dashboard() {
                     ) : null}
                   </span>
                   <span className="rank-meta">
-                    {providerInfo(p).quotaOnly ? <span title={t(providerInfo(p).planHint || "")}>
+                    {providerInfo(p).quotaOnly || (providerInfo(p).dualAccountView && (state.snapshots[p.id]?.quotas?.length ?? 0) > 0) ? <span title={t(providerInfo(p).planHint || "")}>
                       {state.snapshots[p.id]?.quotas?.length
                         ? state.snapshots[p.id]!.quotas.map((q) => `${q.label} · ${q.percent.toFixed(2)}%`).join(" / ")
                         : `${t(providerInfo(p).planHint || "")} · —`}
-                    </span> : providerInfo(p).billingUsage ? (
+                    </span> : providerInfo(p).dualAccountView ? (
+                      <span>
+                        {t("providers.metric.balance")} <b>{fmt.money(state.snapshots[p.id]?.balance, p.currency)}</b>
+                      </span>
+                    ) : providerInfo(p).billingUsage ? (
                       <span title={t("billing.scope")}>
                         {t("billing.monthCost")} <b>{state.snapshots[p.id]?.month != null ? fmt.money(state.snapshots[p.id]?.month?.cost, p.currency) : "—"}</b>
                       </span>

@@ -87,12 +87,11 @@ export default function App() {
     applyTheme(state.settings?.theme || "dark");
   }, [state.settings?.theme]);
 
-  // 首次拿到设置后判断是否需要语言引导；随后触发一次静默刷新
+  // 首次拿到设置后判断是否需要语言引导（启动时不自动刷新，只展示已缓存快照）
   useEffect(() => {
     if (!state.ready) return;
     const settings = state.settings || null;
     if (!settings || !settings.language) setOnboardingNeeded(true);
-    if (state.providers.length) store.refreshAll(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.ready]);
 

@@ -79,7 +79,7 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
   },
   {
     id: "pv_demo_hunyuan",
-    name: "腾讯混元 / TokenHub（演示）",
+    name: "混元 / 腾讯云（演示）",
     kind: "hunyuan",
     enabled: true,
     baseUrl: "https://tokenhub.tencentcloudapi.com",
@@ -98,7 +98,7 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
   },
   {
     id: "pv_demo_bailian",
-    name: "阿里云百炼（演示）",
+    name: "百炼 / 阿里云（演示）",
     kind: "bailian",
     enabled: true,
     baseUrl: "https://business.aliyuncs.com",
@@ -117,7 +117,7 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
   },
   {
     id: "pv_demo_deepseek",
-    name: "DeepSeek 官方",
+    name: "DeepSeek / 深度求索",
     kind: "deepseek",
     enabled: true,
     baseUrl: "https://api.deepseek.com",
@@ -150,7 +150,7 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
   },
   {
     id: "pv_demo_mimo",
-    name: "小米 MiMo（演示）",
+    name: "MiMo / 小米（演示）",
     kind: "mimo",
     enabled: true,
     baseUrl: "https://api.xiaomimimo.com",
@@ -192,7 +192,7 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
   },
   {
     id: "pv_demo_glm",
-    name: "GLM / Z.ai",
+    name: "GLM / 智谱",
     kind: "glm",
     enabled: true,
     baseUrl: "https://open.bigmodel.cn",
@@ -231,7 +231,7 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
   },
   {
     id: "pv_demo_volcengine",
-    name: "火山方舟",
+    name: "方舟 / 火山引擎",
     kind: "volcengine",
     enabled: true,
     baseUrl: "https://ark.cn-beijing.volcengineapi.com",
@@ -251,6 +251,98 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
     notes: "AK/SK 签名：读取账户余额、Coding Plan 与模型信息",
     createdAt: "2026-09-18 10:00:00",
     updatedAt: "2026-09-18 10:00:00",
+  },
+  {
+    id: "pv_demo_minimax_plan",
+    name: "MiniMax Token Plan（演示）",
+    kind: "minimax",
+    enabled: true,
+    baseUrl: "https://api.minimaxi.com",
+    authType: "token",
+    accessMode: "api",
+    token: "demo-subscription-key",
+    icon: "MM",
+    accent: "#e8542f",
+    currency: "CNY",
+    quotaPerUnit: 500000,
+    displayInCurrency: true,
+    cardView: "quota",
+    notes: "演示数据：订阅 Key 读取 Token Plan / Coding Plan 的 5 小时与周窗口",
+    createdAt: "2026-09-20 10:00:00",
+    updatedAt: "2026-09-20 10:00:00",
+  },
+  {
+    id: "pv_demo_minimax_payg",
+    name: "MiniMax 按量付费（演示）",
+    kind: "minimax",
+    enabled: true,
+    baseUrl: "https://api.minimax.io",
+    authType: "token",
+    accessMode: "api",
+    token: "sk-api-demo-key",
+    icon: "MM",
+    accent: "#e8542f",
+    currency: "USD",
+    quotaPerUnit: 500000,
+    displayInCurrency: true,
+    notes: "演示数据：按量付费 Key 只读取钱包余额（海外站，USD）",
+    createdAt: "2026-09-20 10:00:00",
+    updatedAt: "2026-09-20 10:00:00",
+  },
+  {
+    id: "pv_demo_siliconflow",
+    name: "硅基流动（演示）",
+    kind: "siliconflow",
+    enabled: true,
+    baseUrl: "https://api.siliconflow.cn",
+    authType: "token",
+    accessMode: "api",
+    token: "sk-demo-siliconflow-key",
+    icon: "SF",
+    accent: "#6e29f6",
+    currency: "CNY",
+    quotaPerUnit: 500000,
+    displayInCurrency: true,
+    notes: "演示数据：API Key 仅查询总余额、充值余额与赠送余额",
+    createdAt: "2026-09-22 10:00:00",
+    updatedAt: "2026-09-22 10:00:00",
+  },
+  {
+    id: "pv_demo_stepfun",
+    name: "阶跃星辰（演示）",
+    kind: "stepfun",
+    enabled: true,
+    baseUrl: "https://api.stepfun.com",
+    authType: "token",
+    accessMode: "api",
+    token: "sk-demo-stepfun-key",
+    icon: "ST",
+    accent: "#0ea5e9",
+    currency: "CNY",
+    quotaPerUnit: 500000,
+    displayInCurrency: true,
+    notes: "演示数据：API Key 仅查询可用余额、累计充值与累计赠送",
+    createdAt: "2026-09-24 10:00:00",
+    updatedAt: "2026-09-24 10:00:00",
+  },
+  {
+    id: "pv_demo_pangu",
+    name: "华为云盘古（演示）",
+    kind: "pangu",
+    enabled: true,
+    baseUrl: "https://bss.myhuaweicloud.com",
+    authType: "token",
+    accessMode: "api",
+    accessKeyId: "AKIN-demo-pangu",
+    accessKeySecret: "demo-pangu-secret",
+    icon: "PG",
+    accent: "#c7000b",
+    currency: "CNY",
+    quotaPerUnit: 500000,
+    displayInCurrency: true,
+    notes: "演示数据：AK/SK 只读取华为云账户整体余额，非盘古专属",
+    createdAt: "2026-09-24 10:00:00",
+    updatedAt: "2026-09-24 10:00:00",
   },
 ];
 
@@ -309,6 +401,115 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
       supportsUsageApi: true,
     };
   }
+  if (p.kind === "stepfun") {
+    const currency =
+      new URL(p.baseUrl || "https://api.stepfun.com").hostname === "api.stepfun.ai" ? "USD" : "CNY";
+    return {
+      providerId: p.id,
+      providerName: p.name,
+      kind: p.kind,
+      currency,
+      fetchedAt: nowStamp(),
+      ok: true,
+      error: null,
+      account: null,
+      balance: 52.3,
+      balanceRaw: null,
+      granted: null,
+      used: null,
+      requestsTotal: null,
+      tokensTotal: null,
+      today: null,
+      month: null,
+      days: [],
+      models: [],
+      quotas: [],
+      logs: [],
+      metrics: [
+        { label: `可用余额（${currency}）`, value: "52.30", hint: "演示数据；阶跃星辰官方账户接口" },
+        { label: `累计充值（${currency}）`, value: "200.00", hint: null },
+        { label: `累计赠送（${currency}）`, value: "26.00", hint: null },
+        { label: "账户类型", value: "预付费", hint: "prepaid 预付费 / postpaid 后付费（演示）" },
+      ],
+      apiKeys: [],
+      supportsUsageApi: false,
+    };
+  }
+  if (p.kind === "pangu") {
+    return {
+      providerId: p.id,
+      providerName: p.name,
+      kind: p.kind,
+      currency: "CNY",
+      fetchedAt: nowStamp(),
+      ok: true,
+      error: null,
+      account: "AT-demo-pangu",
+      balance: 120.5,
+      balanceRaw: null,
+      granted: null,
+      used: null,
+      requestsTotal: null,
+      tokensTotal: null,
+      today: null,
+      month: null,
+      days: [],
+      models: [],
+      quotas: [],
+      logs: [],
+      metrics: [
+        { label: "账户余额（CNY）", value: "120.50", hint: "演示数据；华为云费用中心，非盘古专属" },
+        { label: "奖励金（CNY）", value: "30.00", hint: null },
+        { label: "欠款总额（CNY）", value: "12.00", hint: "演示数据；欠款不计入账户余额" },
+        { label: "数据口径", value: "华为云账户整体余额", hint: "盘古调用统计仅在 ModelArts Studio 控制台可见（演示）" },
+      ],
+      apiKeys: [],
+      supportsUsageApi: false,
+    };
+  }
+  if (kindInfo(p.kind).dualAccountView) {
+    const host = new URL(p.baseUrl || "https://api.minimaxi.com").hostname;
+    const currency = host === "api.minimax.io" ? "USD" : "CNY";
+    const payg = (p.token || "").startsWith("sk-api-");
+    return {
+      providerId: p.id,
+      providerName: p.name,
+      kind: p.kind,
+      currency,
+      fetchedAt: nowStamp(),
+      ok: true,
+      error: null,
+      account: null,
+      balance: payg ? 98 : null,
+      balanceRaw: null,
+      granted: null,
+      used: null,
+      requestsTotal: null,
+      tokensTotal: null,
+      today: null,
+      month: null,
+      days: [],
+      models: [],
+      quotas: payg
+        ? []
+        : [
+            { label: "M 系列 · 5h", used: 1140, quota: 1500, percent: 76, resetAt: "10-23 20:00" },
+            { label: "M 系列 · 周", used: 8200, quota: 30000, percent: 27.33, resetAt: "10-26 00:00" },
+            { label: "语音 · 5h", used: 0, quota: 9000, percent: 0, resetAt: "10-23 20:00" },
+          ],
+      logs: [],
+      metrics: payg
+        ? [
+            { label: `账户余额（${currency}）`, value: "98.00", hint: "演示数据；按量付费钱包，不含逐日用量" },
+            { label: `现金余额（${currency}）`, value: "80.00", hint: null },
+            { label: `代金券余额（${currency}）`, value: "18.00", hint: null },
+            { label: `欠费金额（${currency}）`, value: "0.00", hint: null },
+          ]
+        : [{ label: "套餐类型", value: "Token Plan", hint: "按 API Key 自动识别（演示）" }],
+      apiKeys: [],
+      supportsUsageApi: false,
+    };
+  }
   const rnd = seedRandom(hash(p.id) + new Date().getDate());
   const dates = kindInfo(p.kind).independentUsageSources
     ? Array.from({ length: Math.max(30, new Date(Date.now() + 8 * 3600000).getUTCDate()) }, (_, i) => {
@@ -325,6 +526,7 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
   const isVe = p.kind === "volcengine";
   const isKimi = p.kind === "kimi";
   const isMimo = p.kind === "mimo";
+  const isSf = p.kind === "siliconflow";
   const hasUsage =
     (isDs && p.accessMode === "login" && !!p.sessionToken) ||
     (isMimo && p.accessMode === "login" && !!p.sessionToken) ||
@@ -376,8 +578,8 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
     fetchedAt: nowStamp(),
     ok: true,
     error: null,
-    account: isDs || isKimi ? null : isMimo ? "demo@mimo.example.com" : isVe ? "2100000001" : isGlm ? "demo@bigmodel.cn" : "demo",
-    balance: isKimi ? 88.6 : isDs ? 128.42 : isMimo ? 286.5 : isVe ? 986.42 : isGlm ? 42.5 : 36.75,
+    account: isDs || isKimi || isSf ? null : isMimo ? "demo@mimo.example.com" : isVe ? "2100000001" : isGlm ? "demo@bigmodel.cn" : "demo",
+    balance: isKimi ? 88.6 : isSf ? 66.8 : isDs ? 128.42 : isMimo ? 286.5 : isVe ? 986.42 : isGlm ? 42.5 : 36.75,
     balanceRaw: p.kind === "newapi" ? 18375000 : null,
     granted: isDs ? 50 : null,
     used: hasUsage ? Number((costTotal * (isDs ? 1 : 1.6)).toFixed(2)) : isGlm ? 57.5 : null,
@@ -454,6 +656,12 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
       { label: `可用余额（${kimiCurrency}）`, value: "88.60", hint: "Moonshot 官方余额接口" },
       { label: `代金券余额（${kimiCurrency}）`, value: "20.00", hint: null },
       { label: `现金余额（${kimiCurrency}）`, value: "68.60", hint: null },
+    ];
+  } else if (isSf) {
+    snap.metrics = [
+      { label: `总余额（${p.currency}）`, value: "66.80", hint: "硅基流动官方账户接口" },
+      { label: `充值余额（${p.currency}）`, value: "60.00", hint: null },
+      { label: `赠送余额（${p.currency}）`, value: "6.80", hint: null },
     ];
   } else if (isMimo) {
     snap.metrics = [
@@ -726,6 +934,7 @@ export async function mockInvoke(cmd: string, args: Record<string, any>): Promis
       await delay(600);
       if (providerInfo(args.provider).cliUsage) return "CLI 只读额度查询（纯虚构演示，未验证真实 Profile；个人版月 Credits 仍未知）";
       if (providerInfo(args.provider).quotaOnly) return "Token Plan 团队版只读额度接口（演示模式，非实际凭证验证）";
+      if (providerInfo(args.provider).dualAccountView) return "连接成功（演示模式），已按 Key 类型自动识别余额 / 套餐额度";
       return "连接成功（演示模式），余额 128.42 CNY";
     case "start_deepseek_login":
       await delay(900);

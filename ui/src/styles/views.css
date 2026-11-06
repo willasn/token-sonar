@@ -340,6 +340,11 @@
   white-space: nowrap;
 }
 
+/* meta 行首的「品牌 / 厂商」类型名：比站点地址稍亮，便于区分渠道 */
+.pcard-title .meta .kind-tag {
+  color: var(--text-dim);
+}
+
 /* 厂商名右侧的「控制台」入口：小尺寸胶囊按钮，点击用系统浏览器打开厂商控制台 */
 .pcard-console {
   display: inline-flex;
@@ -653,6 +658,16 @@
   font-size: 14px;
   font-weight: 620;
   letter-spacing: 0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 列表行名称右侧的「品牌 / 厂商」类型名 */
+.prow-kind {
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--text-mute);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

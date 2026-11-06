@@ -100,15 +100,15 @@ const zh: Record<string, string> = {
   "dash.emptyCta": "添加 AI 渠道",
 
   /* --------------------------- Providers --------------------------- */
-  "kind.deepseek.name": "DeepSeek 官方",
+  "kind.deepseek.name": "DeepSeek / 深度求索",
   "kind.deepseek.desc": "官方接口读余额；登录授权后读用量与 API Keys",
   "kind.newapi.name": "New API 中转",
   "kind.newapi.desc": "用站点访问令牌读取额度、消耗与请求统计",
-  "kind.glm.name": "GLM / Z.ai",
+  "kind.glm.name": "GLM / 智谱",
   "kind.glm.desc": "用开放平台 API Key 读取账户余额与套餐额度",
-  "kind.volcengine.name": "火山方舟",
+  "kind.volcengine.name": "方舟 / 火山引擎",
   "kind.volcengine.desc": "用 Access Key（AK/SK）签名读取账户余额、Coding Plan 与模型信息",
-  "kind.hunyuan.name": "腾讯混元 / TokenHub",
+  "kind.hunyuan.name": "混元 / 腾讯云",
   "kind.hunyuan.desc": "AK/SK 读取腾讯云整体余额、TokenHub 今日 / 本月 Token 与可见企业版额度；个人套餐额度不可读取",
   "mode.hunyuan.api.label": "SecretId / SecretKey 签名",
   "mode.hunyuan.api.desc": "腾讯云 AK / SK（非模型 API Key）· 固定广州管控面",
@@ -121,7 +121,7 @@ const zh: Record<string, string> = {
   "form.hunyuanUrlHint": "默认 https://tokenhub.tencentcloudapi.com，固定广州官方管控面，非推理 Base URL；不合并新加坡或传统混元历史数据",
   "form.hunyuanAkHint": "使用腾讯云 SecretId / SecretKey，保存为 accessKeyId / accessKeySecret，仅存本机。需 billing:DescribeAccountBalance 及 tokenhub:DescribeUsageRankList、DescribeTokenPlanList、DescribeTokenPlan 对应只读权限。余额非混元专属；个人 Coding Plan、通用 / Hy Token Plan 额度当前公开接口不可读取。",
   "usage.hunyuanScope": "余额为腾讯云整体余额，非混元专属。今日 / 本月 Token 在账户明细中展示，来自广州 TokenHub 账户与模型统计，含其他模型，不代表按量付费消耗。无账单费用、请求数、逐日趋势或历史累计量；仅可见企业版 enterprise credits / enterprise-auto tokens，个人 Coding Plan、通用 / Hy Token Plan 额度不可读取，未知不记作零。",
-  "kind.mimo.name": "小米 MiMo",
+  "kind.mimo.name": "MiMo / 小米",
   "kind.mimo.desc": "登录小米账号后读取余额、逐日逐模型用量、月度账单与 Token Plan 套餐额度",
   "mode.mimo.login.desc": "小米账号网页会话（Cookie）",
   "mode.mimo.login.gets": "账户余额（充值 / 赠送 / 冻结）、逐日逐模型 Token 与费用、月度账单、联网插件用量、Token Plan 额度与到期时间、API Keys",
@@ -134,6 +134,62 @@ const zh: Record<string, string> = {
   "form.mimoCookiePlaceholder": "点击右侧按钮登录获取",
   "form.mimoCookieHint":
     "点击「登录获取」会打开小米账号登录窗口，登录完成后自动读取 platform.xiaomimimo.com 的 Cookie 并校验余额接口。Cookie 仅保存在本机，可重新登录覆盖。",
+  "kind.minimax.name": "MiniMax / 稀宇科技",
+  "kind.minimax.desc": "一个 API Key 读取按量付费余额，或 Token Plan / Coding Plan 的 5 小时与周额度",
+  "kind.siliconflow.name": "硅基流动 / SiliconFlow",
+  "kind.siliconflow.desc": "用官方 API Key 读取账户余额分项：总余额、充值余额、赠送余额（无逐日用量）",
+  "mode.minimax.api.desc": "MiniMax 开放平台 API Key（按量付费或订阅 Key）",
+  "mode.minimax.api.gets":
+    "按量付费：可用余额、现金、代金券、授信与欠费；Token Plan / Coding Plan：各模型家族 5 小时 / 周窗口用量与重置时间。不含逐日用量、账单明细与 API Key 列表",
+  "mode.siliconflow.api.desc": "硅基流动官方 API Key",
+  "mode.siliconflow.api.gets":
+    "官方账户信息接口：总余额、充值余额、赠送余额；不提供逐日用量、模型统计或 API Key 列表",
+  "filter.minimax": "MiniMax",
+  "filter.siliconflow": "硅基流动",
+  "providers.kindMinimax": "MiniMax",
+  "providers.kindSiliconflow": "硅基流动",
+  "detail.kindMinimax": "MiniMax / 稀宇科技",
+  "detail.kindSiliconflow": "硅基流动 / SiliconFlow",
+  "form.siliconflowUrlHint":
+    "国内站用 https://api.siliconflow.cn（默认，CNY）；国际站改为 https://api.siliconflow.com（USD），余额按站点币种展示",
+  "form.siliconflowKeyHint":
+    "在硅基流动控制台「API 密钥」创建，仅保存在本机；官方账户接口只返回余额，不提供逐日或模型用量",
+  "kind.stepfun.name": "阶跃星辰 / StepFun",
+  "kind.stepfun.desc": "用官方 API Key 读取账户可用余额、累计充值与累计赠送（无逐日用量）",
+  "mode.stepfun.api.desc": "阶跃星辰官方 API Key（国内 / 国际站通用）",
+  "mode.stepfun.api.gets":
+    "官方账户接口：可用余额、累计充值、累计赠送与账户类型；不提供逐日用量、模型统计或 API Key 列表",
+  "filter.stepfun": "阶跃星辰",
+  "providers.kindStepfun": "阶跃星辰",
+  "detail.kindStepfun": "阶跃星辰 / StepFun",
+  "form.stepfunUrlHint":
+    "国内站 https://api.stepfun.com（默认，CNY）；国际站改为 https://api.stepfun.ai（USD），余额按站点币种展示",
+  "form.stepfunKeyHint":
+    "在阶跃星辰控制台创建 API Key，仅保存在本机；官方账户接口只返回余额，不提供逐日或模型用量",
+  "usage.stepfunScope":
+    "余额为阶跃星辰账户可用余额（含充值与赠送）；官方 API 不提供逐日费用、Token、请求数或模型统计。",
+  "kind.pangu.name": "盘古 / 华为云",
+  "kind.pangu.desc": "用华为云 AK/SK 签名读取费用中心账户余额；盘古调用统计仅控制台可见",
+  "mode.pangu.api.label": "AK/SK 云签名",
+  "mode.pangu.api.desc": "华为云 Access Key ID / Secret Access Key（非盘古 API Key）· 固定费用中心",
+  "mode.pangu.api.gets":
+    "华为云账户整体余额（余额 / 信用 / 奖励金 / 保证金 / 欠款）；盘古专属用量、Token 与模型统计无公开接口",
+  "filter.pangu": "华为云盘古",
+  "providers.kindPangu": "华为云盘古",
+  "detail.kindPangu": "盘古 / 华为云",
+  "form.panguUrlHint":
+    "固定 https://bss.myhuaweicloud.com，华为云费用中心接口，非盘古推理 Base URL；签名只发往官方域名",
+  "form.panguAkHint":
+    "使用华为云「我的凭证 - 访问密钥」创建的 AK/SK，非盘古 API Key。需 BSS 只读权限 billing:balance:view；余额为华为云账户整体余额，非盘古专属。",
+  "usage.panguScope":
+    "余额为华为云账户整体余额，含余额、信用、奖励金、保证金与欠款分项，非盘古专属；盘古调用统计仅在 ModelArts Studio 控制台可见，公开接口不提供逐日用量或模型统计。",
+  "form.minimaxUrlHint":
+    "国内账号用 https://api.minimaxi.com（默认），海外账号改为 https://api.minimax.io；两站的账号与 Key 互不通用",
+  "form.minimaxKeyHint":
+    "填开放平台 API Key 即可，无需 GroupId 或 AK/SK。按量付费 Key 以 sk-api- 开头，读钱包余额；Token Plan / Coding Plan 订阅 Key 读滚动窗口额度，类型按前缀自动识别",
+  "plan.minimaxHint":
+    "套餐类型按 API Key 自动识别（Token Plan / Coding Plan）；只提供 5 小时与周窗口，不含金额、逐日用量、账单明细与套餐档位",
+  "plan.windowUsage": "已用 {used} / 上限 {total} · 剩余 {remaining}（单位见窗口标题）",
   "plan.type": "百炼套餐类型",
   "plan.cliMode": "官方 CLI · 控制台 Profile 只读查询",
   "plan.cliProfile": "绑定 CLI Profile（控制台账号）",
@@ -150,7 +206,7 @@ const zh: Record<string, string> = {
   "plan.personalHint": "CLI 读取独立 Harness 权益及到期时间，不合计为个人版月额度。2026-09-22 后个人版月 Credits 尚无官方 CLI 输出契约，保持未知；旧 5 小时/周比例不可代替。",
   "plan.codingHint": "官方 CLI 读取绑定 Profile 的 Coding Plan 调用次数：5 小时 / 周 / 账单月已用、总量与重置时间；非 Credits、非 Token、非自然月费用，缺失窗口未知。",
   "plan.configOnlyHint": "凭证由官方 CLI 的明确 Profile 管理，API Key 不参与本次查询。",
-  "kind.bailian.name": "阿里云百炼",
+  "kind.bailian.name": "百炼 / 阿里云",
   "kind.bailian.desc": "用阿里云 AK/SK 读取账户可用额度与百炼当月已出账费用，不是实时用量接口",
   "mode.bailian.api.label": "Access Key 签名",
   "mode.bailian.api.desc": "阿里云 AK / SK（非 DashScope API Key）",
@@ -612,15 +668,15 @@ const en: Record<string, string> = {
   "dash.emptyCta": "Add provider",
 
   /* ----------------------------- Providers -------------------------- */
-  "kind.deepseek.name": "DeepSeek Official",
+  "kind.deepseek.name": "DeepSeek",
   "kind.deepseek.desc": "Balance via official API; usage & API keys after sign-in",
   "kind.newapi.name": "New API Relay",
   "kind.newapi.desc": "Read quota, consumption and request stats with a site token",
-  "kind.glm.name": "GLM / Z.ai",
+  "kind.glm.name": "GLM / Zhipu",
   "kind.glm.desc": "Read account balance and plan quota with an open-platform API key",
-  "kind.volcengine.name": "Volcengine Ark",
+  "kind.volcengine.name": "Ark / Volcano Engine",
   "kind.volcengine.desc": "Signed AK/SK access to account balance, Coding Plan and model info",
-  "kind.hunyuan.name": "Tencent Hunyuan / TokenHub",
+  "kind.hunyuan.name": "Hunyuan / Tencent Cloud",
   "kind.hunyuan.desc": "Read Tencent Cloud account balance, today's / monthly TokenHub tokens and visible enterprise quota with AK/SK; personal plan quota is unavailable",
   "mode.hunyuan.api.label": "SecretId / SecretKey signature",
   "mode.hunyuan.api.desc": "Tencent Cloud AK / SK (not a model API key) · fixed Guangzhou control plane",
@@ -633,7 +689,7 @@ const en: Record<string, string> = {
   "form.hunyuanUrlHint": "Default https://tokenhub.tencentcloudapi.com; fixed official Guangzhou control plane, not an inference Base URL. Singapore and legacy Hunyuan history are not merged.",
   "form.hunyuanAkHint": "Use Tencent Cloud SecretId / SecretKey, stored locally as accessKeyId / accessKeySecret. Requires read permissions for billing:DescribeAccountBalance and tokenhub:DescribeUsageRankList, DescribeTokenPlanList, DescribeTokenPlan. Balance is not Hunyuan-only. Personal Coding Plan and general / Hy Token Plan quotas are unavailable via current public APIs.",
   "usage.hunyuanScope": "Balance is Tencent Cloud account-wide, not Hunyuan-only. Today's / monthly tokens appear in account details and cover Guangzhou TokenHub account / model statistics, including other models; they are not pay-as-you-go billed consumption. No bill costs, requests, daily trends or lifetime totals. Only visible enterprise credits / enterprise-auto tokens are supported; personal Coding Plan and general / Hy Token Plan quotas are unavailable, not zero.",
-  "kind.mimo.name": "Xiaomi MiMo",
+  "kind.mimo.name": "MiMo / Xiaomi",
   "kind.mimo.desc": "Sign in with a Xiaomi account to read balance, daily per-model usage, monthly bills and Token Plan quota",
   "mode.mimo.login.desc": "Xiaomi account web session (Cookie)",
   "mode.mimo.login.gets": "Account balance (cash / gift / frozen), daily per-model tokens and cost, monthly bills, web-plugin usage, Token Plan quota and expiry, API keys",
@@ -646,6 +702,65 @@ const en: Record<string, string> = {
   "form.mimoCookiePlaceholder": "Click the button on the right to sign in",
   "form.mimoCookieHint":
     "Sign in opens the Xiaomi account login window. After signing in, the app reads platform.xiaomimimo.com cookies and verifies the balance API. The cookie is stored locally and can be replaced by signing in again.",
+  "kind.minimax.name": "MiniMax",
+  "kind.minimax.desc": "Read pay-as-you-go balance or Token Plan / Coding Plan 5-hour and weekly quota with one API key",
+  "kind.siliconflow.name": "SiliconFlow",
+  "kind.siliconflow.desc": "Read account balance breakdown — total, recharged and gift — with the official API key (no daily usage)",
+  "mode.minimax.api.desc": "MiniMax open-platform API key (pay-as-you-go or subscription)",
+  "mode.minimax.api.gets":
+    "Pay-as-you-go: available balance, cash, voucher, credit and arrears; Token Plan / Coding Plan: 5-hour and weekly windows per model family with reset times. No daily usage, bills or API key list",
+  "mode.siliconflow.api.desc": "SiliconFlow official API key",
+  "mode.siliconflow.api.gets":
+    "Official account info API: total, recharged and gift balance; no daily usage, model stats or API key list",
+  "filter.minimax": "MiniMax",
+  "filter.siliconflow": "SiliconFlow",
+  "providers.kindMinimax": "MiniMax",
+  "providers.kindSiliconflow": "SiliconFlow",
+  "detail.kindMinimax": "MiniMax",
+  "detail.kindSiliconflow": "SiliconFlow",
+  "form.siliconflowUrlHint":
+    "China site: https://api.siliconflow.cn (default, CNY); international site: https://api.siliconflow.com (USD). Balance is shown in the site's currency",
+  "form.siliconflowKeyHint":
+    "Create an API key in the SiliconFlow console. Stored locally only; the account API returns balance only, with no daily or model usage",
+  "kind.stepfun.name": "StepFun",
+  "kind.stepfun.desc":
+    "Read available balance, total recharged and total gifted with the official API key (no daily usage)",
+  "mode.stepfun.api.desc": "Official StepFun API key (both .com and .ai sites)",
+  "mode.stepfun.api.gets":
+    "Official account API: available balance, total recharged, total gifted and account type; no daily usage, model stats or API key list",
+  "filter.stepfun": "StepFun",
+  "providers.kindStepfun": "StepFun",
+  "detail.kindStepfun": "StepFun",
+  "form.stepfunUrlHint":
+    "China site: https://api.stepfun.com (default, CNY); international site: https://api.stepfun.ai (USD). Balance follows the site currency",
+  "form.stepfunKeyHint":
+    "Create an API key in the StepFun console. Stored locally only; the account API returns balance only, with no daily or model usage",
+  "usage.stepfunScope":
+    "Balance is the StepFun account available balance (including recharged and gifted amounts); the official API provides no daily cost, token, request or model stats.",
+  "kind.pangu.name": "Pangu / Huawei Cloud",
+  "kind.pangu.desc":
+    "Read the Huawei Cloud billing balance with AK/SK; Pangu usage stats are console-only",
+  "mode.pangu.api.label": "AK/SK cloud signature",
+  "mode.pangu.api.desc":
+    "Huawei Cloud Access Key ID / Secret Access Key (not a Pangu API key) · fixed billing endpoint",
+  "mode.pangu.api.gets":
+    "Huawei Cloud account balance (cash / credit / reward / deposit / debt); Pangu usage, tokens and model stats have no public API",
+  "filter.pangu": "Huawei Pangu",
+  "providers.kindPangu": "Huawei Cloud Pangu",
+  "detail.kindPangu": "Pangu / Huawei Cloud",
+  "form.panguUrlHint":
+    "Fixed at https://bss.myhuaweicloud.com (Huawei Cloud BSS), not the Pangu inference base URL; signatures are only sent to the official domain",
+  "form.panguAkHint":
+    "Use an AK/SK created in Huawei Cloud 'My Credentials - Access Keys', not a Pangu API key. Requires the BSS read-only permission billing:balance:view; the balance is the whole Huawei Cloud account balance, not Pangu-specific.",
+  "usage.panguScope":
+    "Balance is the whole Huawei Cloud account balance, broken down into cash, credit, reward, deposit and debt — not Pangu-specific. Pangu usage stats are only available in the ModelArts Studio console; no public daily usage or model stats API.",
+  "form.minimaxUrlHint":
+    "China accounts use https://api.minimaxi.com (default); international accounts use https://api.minimax.io. Accounts and keys are not interchangeable across regions",
+  "form.minimaxKeyHint":
+    "An open-platform API key is enough — no GroupId or AK/SK. Pay-as-you-go keys start with sk-api- and read the wallet balance; Token Plan / Coding Plan subscription keys read rolling windows. The key type is detected automatically",
+  "plan.minimaxHint":
+    "Plan type is detected automatically from the API key (Token Plan / Coding Plan). Only 5-hour and weekly windows are available; no money, daily usage, bills or plan tier",
+  "plan.windowUsage": "Used {used} / limit {total} · remaining {remaining} (unit in window title)",
   "plan.type": "Bailian plan type",
   "plan.cliMode": "Official CLI · read-only console Profile",
   "plan.cliProfile": "Bound CLI Profile (console account)",
@@ -661,7 +776,7 @@ const en: Record<string, string> = {
   "plan.personalHint": "Reads separate Harness entitlements and expiration via CLI, not the personal monthly quota. Monthly Credits after 2026-09-22 have no official CLI output contract and remain unknown; legacy 5-hour/week ratios cannot replace them.",
   "plan.codingHint": "Reads call counts for the bound CLI Profile: 5-hour / weekly / billing-month used, total and reset time. Not Credits, tokens or calendar-month costs. Missing windows remain unknown.",
   "plan.configOnlyHint": "Credentials are managed by the explicitly bound official CLI Profile; the API key is not used for this query.",
-  "kind.bailian.name": "Alibaba Cloud Bailian",
+  "kind.bailian.name": "Bailian / Alibaba Cloud",
   "kind.bailian.desc": "Read account available credit and this month's billed Bailian cost with Alibaba Cloud AK/SK; not a real-time usage API",
   "mode.bailian.api.label": "Access Key signature",
   "mode.bailian.api.desc": "Alibaba Cloud AK / SK (not a DashScope API key)",

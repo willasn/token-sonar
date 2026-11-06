@@ -33,6 +33,18 @@ pub enum ProviderKind {
     /// 小米 MiMo 开放平台（网页登录读取余额、用量与 Token Plan 额度）
     #[serde(rename = "mimo")]
     Mimo,
+    /// MiniMax 开放平台（API Key 读取按量余额或 Token Plan / Coding Plan 额度）
+    #[serde(rename = "minimax")]
+    Minimax,
+    /// 硅基流动 SiliconFlow（API Key 读取账户余额分项）
+    #[serde(rename = "siliconflow")]
+    Siliconflow,
+    /// 阶跃星辰 StepFun（API Key 读取账户余额分项）
+    #[serde(rename = "stepfun")]
+    Stepfun,
+    /// 华为云盘古 Pangu（AK/SK 签名读取华为云账户余额）
+    #[serde(rename = "pangu")]
+    Pangu,
 }
 
 impl ProviderKind {
@@ -46,6 +58,10 @@ impl ProviderKind {
             ProviderKind::Bailian => "bailian",
             ProviderKind::Hunyuan => "hunyuan",
             ProviderKind::Mimo => "mimo",
+            ProviderKind::Minimax => "minimax",
+            ProviderKind::Siliconflow => "siliconflow",
+            ProviderKind::Stepfun => "stepfun",
+            ProviderKind::Pangu => "pangu",
         }
     }
 
@@ -60,19 +76,31 @@ impl ProviderKind {
             ProviderKind::Bailian => "https://business.aliyuncs.com",
             ProviderKind::Hunyuan => "https://tokenhub.tencentcloudapi.com",
             ProviderKind::Mimo => "https://api.xiaomimimo.com",
+            // 国内站；海外站改为 https://api.minimax.io
+            ProviderKind::Minimax => "https://api.minimaxi.com",
+            // 国内站；国际站改为 https://api.siliconflow.com
+            ProviderKind::Siliconflow => "https://api.siliconflow.cn",
+            // 国内站；国际站改为 https://api.stepfun.ai
+            ProviderKind::Stepfun => "https://api.stepfun.com",
+            // 华为云费用中心固定域名（非盘古推理 Base URL）
+            ProviderKind::Pangu => "https://bss.myhuaweicloud.com",
         }
     }
 
     pub fn default_name(&self) -> &'static str {
         match self {
-            ProviderKind::DeepSeek => "DeepSeek",
-            ProviderKind::NewApi => "New API",
-            ProviderKind::Glm => "GLM / Z.ai",
-            ProviderKind::Kimi => "Kimi",
-            ProviderKind::Volcengine => "火山方舟",
-            ProviderKind::Bailian => "阿里云百炼",
-            ProviderKind::Hunyuan => "腾讯混元 / TokenHub",
-            ProviderKind::Mimo => "小米 MiMo",
+            ProviderKind::DeepSeek => "DeepSeek / 深度求索",
+            ProviderKind::NewApi => "New API 中转",
+            ProviderKind::Glm => "GLM / 智谱",
+            ProviderKind::Kimi => "Kimi / 月之暗面",
+            ProviderKind::Volcengine => "方舟 / 火山引擎",
+            ProviderKind::Bailian => "百炼 / 阿里云",
+            ProviderKind::Hunyuan => "混元 / 腾讯云",
+            ProviderKind::Mimo => "MiMo / 小米",
+            ProviderKind::Minimax => "MiniMax / 稀宇科技",
+            ProviderKind::Siliconflow => "硅基流动 / SiliconFlow",
+            ProviderKind::Stepfun => "阶跃星辰 / StepFun",
+            ProviderKind::Pangu => "盘古 / 华为云",
         }
     }
 

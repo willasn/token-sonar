@@ -44,6 +44,8 @@ export interface KindInfo {
   accessKeySecretLabel?: string;
   /** 仅提供账户余额分项，不提供服务端逐日或模型用量 */
   balanceOnly?: boolean;
+  /** 同一类厂商的凭证既可能是按量余额、也可能是套餐额度，按快照实际数据决定详情页视图 */
+  dualAccountView?: boolean;
   /** 提供当月已出账账单，不是日用量或累计用量接口 */
   billingUsage?: boolean;
   /** 推理与账单双源，负数表示未读取到该维度 */
@@ -53,6 +55,8 @@ export interface KindInfo {
   credentialType?: "api" | "system";
   plans?: { key: NonNullable<ProviderConfig["planType"]>; label: string }[];
   quotaOnly?: boolean;
+  /** 额度窗口单位随模型不同（次数 / Token / 张），不使用 Credits 文案 */
+  windowUnit?: boolean;
   cliUsage?: boolean;
   planHint?: string;
 }
@@ -202,6 +206,67 @@ export const KIND_INFO: Record<ProviderKind, KindInfo> = {
     loginCommand: "start_mimo_login",
     loginTarget: "form.mimoPlatform",
   },
+  minimax: {
+    name: "kind.minimax.name",
+    desc: "kind.minimax.desc",
+    icon: "MM",
+    accent: "#e8542f",
+    chip: "chip-accent",
+    kindLabel: "providers.kindMinimax",
+    detailLabel: "detail.kindMinimax",
+    official: true,
+    console: "https://platform.minimaxi.com/subscribe/token-plan",
+    url: { label: "form.apiUrl", hint: "form.minimaxUrlHint", placeholder: "https://api.minimaxi.com" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.minimaxKeyHint" },
+    dualAccountView: true,
+    windowUnit: true,
+    planHint: "plan.minimaxHint",
+  },
+  siliconflow: {
+    name: "kind.siliconflow.name",
+    desc: "kind.siliconflow.desc",
+    icon: "SF",
+    accent: "#6e29f6",
+    chip: "chip-accent",
+    kindLabel: "providers.kindSiliconflow",
+    detailLabel: "detail.kindSiliconflow",
+    official: true,
+    console: "https://cloud.siliconflow.cn/",
+    url: { label: "form.apiUrl", hint: "form.siliconflowUrlHint", placeholder: "https://api.siliconflow.cn" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.siliconflowKeyHint" },
+    balanceOnly: true,
+  },
+  stepfun: {
+    name: "kind.stepfun.name",
+    desc: "kind.stepfun.desc",
+    icon: "ST",
+    accent: "#0ea5e9",
+    chip: "chip-accent",
+    kindLabel: "providers.kindStepfun",
+    detailLabel: "detail.kindStepfun",
+    official: true,
+    console: "https://platform.stepfun.com/account-overview",
+    url: { label: "form.apiUrl", hint: "form.stepfunUrlHint", placeholder: "https://api.stepfun.com" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.stepfunKeyHint" },
+    balanceOnly: true,
+    usageScope: "usage.stepfunScope",
+  },
+  pangu: {
+    name: "kind.pangu.name",
+    desc: "kind.pangu.desc",
+    icon: "PG",
+    accent: "#c7000b",
+    chip: "chip-accent",
+    kindLabel: "providers.kindPangu",
+    detailLabel: "detail.kindPangu",
+    official: true,
+    console: "https://console.huaweicloud.com/pangu/",
+    url: { label: "form.apiUrl", hint: "form.panguUrlHint", placeholder: "https://bss.myhuaweicloud.com" },
+    api: { label: "form.accessKey", hint: "form.panguAkHint", placeholder: "AKINxxxxxxxxxxxxxxxx" },
+    akSk: true,
+    balanceOnly: true,
+    usageScope: "usage.panguScope",
+  },
 };
 
 const PLAN_INFO: Record<string, Partial<KindInfo>> = {
@@ -237,7 +302,7 @@ export function providerInfo(provider: { kind: string; planType?: ProviderConfig
   return info.plans && provider.planType ? { ...info, ...PLAN_INFO[provider.planType] } : info;
 }
 
-export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan", "mimo"];
+export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan", "mimo", "minimax", "siliconflow", "stepfun", "pangu"];
 
 export function usageValue(snap: UsageSnapshot | null, value: number | null | undefined): number | null {
   return snap && kindInfo(snap.kind).independentUsageSources && (value == null || value < 0) ? null : value ?? null;
@@ -268,6 +333,10 @@ export const MODES_BY_KIND: Record<ProviderKind, AccessModeKey[]> = {
   bailian: ["api"],
   hunyuan: ["api"],
   mimo: ["login"],
+  minimax: ["api"],
+  siliconflow: ["api"],
+  stepfun: ["api"],
+  pangu: ["api"],
 };
 
 interface ModeInfo {
@@ -307,6 +376,18 @@ export const MODE_INFO: Record<string, Partial<Record<AccessModeKey, ModeInfo>>>
   mimo: {
     login: { label: "mode.login.label", desc: "mode.mimo.login.desc", gets: "mode.mimo.login.gets" },
   },
+  minimax: {
+    api: { label: "mode.api.label", desc: "mode.minimax.api.desc", gets: "mode.minimax.api.gets" },
+  },
+  siliconflow: {
+    api: { label: "mode.api.label", desc: "mode.siliconflow.api.desc", gets: "mode.siliconflow.api.gets" },
+  },
+  stepfun: {
+    api: { label: "mode.api.label", desc: "mode.stepfun.api.desc", gets: "mode.stepfun.api.gets" },
+  },
+  pangu: {
+    api: { label: "mode.pangu.api.label", desc: "mode.pangu.api.desc", gets: "mode.pangu.api.gets" },
+  },
 };
 
 export const FILTERS = [
@@ -319,6 +400,10 @@ export const FILTERS = [
   { key: "bailian", label: "filter.bailian" },
   { key: "hunyuan", label: "filter.hunyuan" },
   { key: "mimo", label: "filter.mimo" },
+  { key: "minimax", label: "filter.minimax" },
+  { key: "siliconflow", label: "filter.siliconflow" },
+  { key: "stepfun", label: "filter.stepfun" },
+  { key: "pangu", label: "filter.pangu" },
   { key: "error", label: "filter.error" },
   { key: "off", label: "filter.off" },
 ];

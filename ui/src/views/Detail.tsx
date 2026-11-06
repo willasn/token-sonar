@@ -92,7 +92,10 @@ export function Detail() {
   const money = (v?: number | null) => fmt.money(v, cur);
 
   const info = providerInfo(p);
-  const balanceOnly = !!info.balanceOnly;
+  const hasQuota = !!(snap && snap.quotas && snap.quotas.length);
+  // 同一渠道可能既有按量余额、也有套餐额度：有额度按套餐展示，否则按余额展示
+  const quotaOnly = !!info.quotaOnly || (!!info.dualAccountView && hasQuota);
+  const balanceOnly = !!info.balanceOnly || (!!info.dualAccountView && !hasQuota);
   const billingUsage = !!info.billingUsage;
   const billedTokens = billingTokens(snap);
   const balancePart = (pattern: RegExp) => {
@@ -105,9 +108,8 @@ export function Detail() {
   const mReq = usageValue(snap, snap?.month?.requests ?? (info.independentUsageSources ? null : 0));
   const mTok = usageValue(snap, snap?.month?.tokens ?? (info.independentUsageSources ? null : 0));
 
-  const hasQuota = !!(snap && snap.quotas && snap.quotas.length);
-  const segments = info.quotaOnly ? [{ key: QUOTA_KEY, label: "detail.codePlan" }] : hasQuota ? [{ key: QUOTA_KEY, label: "detail.codePlan" }, ...SEGMENTS] : SEGMENTS;
-  const activeSeg = info.quotaOnly ? QUOTA_KEY : segments.some((m) => m.key === seg) ? seg : "cost";
+  const segments = quotaOnly ? [{ key: QUOTA_KEY, label: "detail.codePlan" }] : hasQuota ? [{ key: QUOTA_KEY, label: "detail.codePlan" }, ...SEGMENTS] : SEGMENTS;
+  const activeSeg = quotaOnly ? QUOTA_KEY : segments.some((m) => m.key === seg) ? seg : "cost";
   const isQuota = activeSeg === QUOTA_KEY;
   const chartKey = activeSeg as Metric;
 
@@ -199,7 +201,7 @@ export function Detail() {
           <div className="quota-pct">
             {pct.toFixed(2)} <span className="unit">%</span>
           </div>
-          {info.quotaOnly ? <div className="sub">{t(info.cliUsage ? "plan.quotaUsage" : "plan.creditsUsage", { used: q.used.toLocaleString(undefined, { maximumFractionDigits: 8 }), total: q.quota.toLocaleString(undefined, { maximumFractionDigits: 8 }), remaining: (q.quota - q.used).toLocaleString(undefined, { maximumFractionDigits: 8 }) })}</div> : null}
+          {quotaOnly ? <div className="sub">{t(info.windowUnit ? "plan.windowUsage" : info.cliUsage ? "plan.quotaUsage" : "plan.creditsUsage", { used: q.used.toLocaleString(undefined, { maximumFractionDigits: 8 }), total: q.quota.toLocaleString(undefined, { maximumFractionDigits: 8 }), remaining: (q.quota - q.used).toLocaleString(undefined, { maximumFractionDigits: 8 }) })}</div> : null}
           <div className="bar">
             <i style={{ width: pct.toFixed(2) + "%" }} />
           </div>
@@ -561,7 +563,7 @@ export function Detail() {
         ) : null}
       </div>
 
-      {info.quotaOnly ? <div className="sub" style={{ margin: "16px 0" }}>{t(info.planHint || "")}</div> : <div className="detail-stats" style={{ marginTop: 16 }}>
+      {quotaOnly ? <div className="sub" style={{ margin: "16px 0" }}>{t(info.planHint || "")}</div> : <div className="detail-stats" style={{ marginTop: 16 }}>
         {statCard(
           "wallet",
           t(billingUsage ? "billing.accountBalance" : balanceOnly ? "kimi.availableBalance" : "detail.remaining"),
@@ -602,8 +604,8 @@ export function Detail() {
       <div className="detail-grid" style={billingUsage && !days.length ? { gridTemplateColumns: "1fr" } : undefined}>
         {(!billingUsage || days.length > 0) ? <div className="card">
           <div className="card-head">
-            <h3>{t(info.quotaOnly ? "detail.codePlan" : "detail.trend")}</h3>
-            {info.quotaOnly ? null : <span className="sub">{t("detail.last30")}</span>}
+            <h3>{t(quotaOnly ? "detail.codePlan" : "detail.trend")}</h3>
+            {quotaOnly ? null : <span className="sub">{t("detail.last30")}</span>}
             <div className="right">
               <div className="segmented">
                 {segments.map((m) => (

@@ -107,6 +107,10 @@
 | **阿里云百炼** | `api`，按套餐配置 | BSS / Token Plan 团队：阿里云 AK/SK；个人 / Coding：明确绑定官方 CLI 控制台 Profile | 固定中国站 BSS 或北京 ModelStudio 管控面 | BSS 账户余额及已出账费用 / Token；团队当前订阅席位与共享包 Credits（非货币 / Token）；Coding 三周期调用次数；个人独立 Harness 权益，个人月 Credits 未知 |
 | **火山方舟** | `api` | Access Key ID + Secret Access Key（AK/SK） | 默认 `https://ark.cn-beijing.volcengineapi.com`，可改（只用于推导签名地域） | 管控面 OpenAPI（AK/SK 签名）：费用中心余额（可用 / 现金 / 冻结 / 欠费 / 信控额度）、Coding Plan 与 Agent Plan 套餐档位与有效期、套餐用量限额（Agent Plan 的 AFP 窗口 / Coding Plan 的 5 小时、周、月使用率）、已开通模型、Coding Plan 可用模型（不提供逐日用量） |
 | **小米 MiMo** | `login` | 平台登录 Cookie（登录窗口由 Rust 读取 `platform.xiaomimimo.com` 的 Cookie） | 固定控制台 `https://platform.xiaomimimo.com`；API 基址 `https://api.xiaomimimo.com` 仅作展示 | 控制台内部接口：账户余额（充值 / 赠送 / 冻结 / 透支）、逐日逐模型费用 / Token / 请求数、月度账单、联网插件用量、个人 Token Plan 套餐与额度、API Keys。官方 API Key 只有 `/v1/models` 与推理接口，不提供余额 / 用量，故不设 `api` 接入方式 |
+| **MiniMax** | `api` | 开放平台 API Key（按量付费 Key 以 `sk-api-` 开头；订阅 Key 用于 Token Plan / Coding Plan，两套 Key 不通用） | 国内 `https://api.minimaxi.com`（默认，CNY）；海外 `https://api.minimax.io`（USD），仅支持这两个官方端点 | 按量付费：`/account/query_balance` 读可用余额、现金、代金券、授信、欠费；订阅：`/v1/token_plan/remains`（回退 `/v1/coding_plan/remains`、`{platform}/v1/api/openplatform/coding_plan/remains`）读各模型家族 5 小时 / 周窗口用量与重置时间。Key 类型按前缀自动识别，无需 GroupId / AK/SK / 登录；不提供逐日用量、账单明细与 API Key 列表 |
+| **硅基流动 SiliconFlow** | `api` | 开放平台 API Key | 国内 `https://api.siliconflow.cn`（默认，CNY）；国际 `https://api.siliconflow.com`（USD），可改 | 官方账户信息接口 `/v1/user/info`：总余额（`totalBalance`）、充值余额（`chargeBalance`）、赠送余额（`balance`）；不提供逐日用量、模型统计或 API Key 列表（无登录授权方式） |
+| **阶跃星辰 StepFun** | `api` | 开放平台 API Key | 国内 `https://api.stepfun.com`（默认，CNY）；国际 `https://api.stepfun.ai`（USD），可改 | 官方账户接口 `GET /v1/accounts`：可用余额（`balance`）、累计充值（`total_cash_balance`）、累计赠送（`total_voucher_balance`）、账户类型（`prepaid` / `postpaid`）；不提供逐日用量、模型统计或 API Key 列表（无登录授权方式） |
+| **华为云盘古 Pangu** | `api` | 华为云 Access Key ID + Secret Access Key（AK/SK，非盘古 API Key） | 固定 `https://bss.myhuaweicloud.com`（华为云费用中心，非盘古推理 Base URL） | `GET /v2/accounts/customer-accounts/balances`（SDK-HMAC-SHA256 签名）：华为云账户整体余额分项（余额 / 信用 / 奖励金 / 保证金）与欠款总额；盘古调用统计仅 ModelArts Studio 控制台可见，公开接口不提供逐日用量、Token 或模型统计 |
 
 旧配置迁移：加载时若没有 `accessMode`，按「有会话凭证即视为登录方式」推断，并把历史的
 `platformToken` 归位到 `sessionToken`（`models.rs` 的 `normalize()`，`storage.rs` 载入时执行）。
@@ -129,6 +133,16 @@ New API 已移除「登录授权」链路，历史登录型配置会被 `normali
     只保存本机，密钥需具备费用中心（billing）与方舟（ark）的只读权限（方舟管控面只认 AK/SK 签名，不支持方舟 API Key）
   - 小米 MiMo `login`：**平台登录 Cookie**，「登录获取」打开小米账号登录窗口，后端自动读取并校验；
     字段可手动粘贴 Cookie 兜底，Cookie 仅保存本机
+  - MiniMax `api`：**API Key**，填开放平台 Key 即可（无需 GroupId / AK/SK）；按量付费 Key 读钱包余额，
+    Token Plan / Coding Plan 订阅 Key 读滚动窗口额度，类型按 `sk-api-` 前缀自动识别；
+    国内 / 海外账号需分别添加，站点地址支持 `api.minimaxi.com` 与 `api.minimax.io` 两个官方域名（无登录授权方式）
+  - 硅基流动 `api`：**API Key**，在硅基流动控制台创建；国内站 `api.siliconflow.cn`（CNY）与国际站
+    `api.siliconflow.com`（USD）需分别添加，仅读取总余额、充值余额与赠送余额（无登录授权及逐日用量）
+  - 阶跃星辰 `api`：**API Key**，在阶跃星辰控制台创建；国内站 `api.stepfun.com`（CNY）与国际站
+    `api.stepfun.ai`（USD）需分别添加，仅读取可用余额、累计充值与累计赠送（无登录授权及逐日用量）
+  - 华为云盘古 `api`：**Access Key ID + Secret Access Key**，华为云「我的凭证 - 访问密钥」创建，非盘古 API Key；
+    复用 `KIND_INFO.akSk` 双字段，需 BSS 只读权限 `billing:balance:view`；固定费用中心域名，
+    余额为华为云账户整体余额（非盘古专属），无登录授权方式
 - New API 专属：展示货币、积分兑换比、是否换算为货币
 - 已移除「用户名 + 密码」表单入口：登录常有人机验证，服务端直连接口过不去，DeepSeek 统一走弹窗登录
   （账号密码直连仅作为后端能力保留，UI 未暴露）；New API 只保留系统访问令牌，不再有网页登录授权
@@ -370,6 +384,26 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 - **可见企业版额度**：`DescribeTokenPlanList` 分页与 `DescribeTokenPlan` 仅读取接口可见企业版 `enterprise`（credits）/ `enterprise-auto`（tokens）的总额度与已用量；未知额度不生成零额度卡片，到期时间不当作滚动窗口重置时间。
 - **明确能力限制**：个人 Coding Plan、通用 / Hy Token Plan 的订阅与额度当前公开接口不可读取，不能用企业版列表为空推断个人未购买；不提供虚假的三套餐接入方式或个人 5 小时 / 周 / 月额度。所需只读权限对应 `billing:DescribeAccountBalance` 与 `tokenhub:DescribeUsageRankList`、`DescribeTokenPlanList`、`DescribeTokenPlan`。
 - **前端与演示**：类型、顺序、筛选、接入模式、中英文提示均注册到元数据表；演示模式使用独立快照分支，所有余额、Token 和企业版 quota 明确为虚构演示数据，无假逐日用量，未知费用 / 请求 / 累计量保持为空，个人额度明确不可读取。
+
+---
+
+### 8.7 阶跃星辰 / StepFun 适配器
+
+- **公开只读接口**：`GET https://api.stepfun.com/v1/accounts`（Bearer API Key），返回 `type`（`prepaid` 预付费 / `postpaid` 后付费）、`balance`、`total_cash_balance`、`total_voucher_balance`。
+- **币种**：国内站 `api.stepfun.com` 按 CNY 结算，国际站 `api.stepfun.ai` 按 USD 结算；站点地址可改，币种按域名自动判定。
+- **明确能力限制**：官方未提供逐日用量、Token、请求数、模型统计或 API Key 列表的公开接口（「使用详情」「组织用量」仅控制台可见），因此 `supportsUsageApi = false`，不生成假的日维度数据。
+- **前端与演示**：类型、筛选、接入方式、中英文文案注册到元数据表；演示模式使用独立快照分支，余额与账户类型均为虚构演示数据。
+
+---
+
+### 8.8 华为云盘古 / Pangu 适配器
+
+- **公开只读接口**：`GET https://bss.myhuaweicloud.com/v2/accounts/customer-accounts/balances`（华为云费用中心 BSS），使用 `SDK-HMAC-SHA256` 签名（`SignedHeaders = content-type;host;x-sdk-date`），规范 URI 以 `/` 结尾。
+- **凭证**：华为云 Access Key ID + Secret Access Key（非盘古 API Key），需 BSS 只读权限 `billing:balance:view`。签名只发往固定官方域名，不使用用户填写的站点地址，避免云密钥外泄。
+- **数据范围**：`account_balances` 按 `account_type` 展示余额（1）/ 信用（2）/ 奖励金（5）/ 保证金（7）分项，`debt_amount` 单独展示欠款；`balance` 取账户余额分项合计。余额为**华为云账户整体余额，非盘古专属**。
+- **明确能力限制**：盘古大模型的调用统计（输入 / 输出 Token、总 Token、时延）只在 ModelArts Studio 控制台「调用统计」可见，公开接口不提供逐日用量、Token 或模型统计，因此 `supportsUsageApi = false`。
+- **错误处理**：接口失败时只回显 `error_code`（如 `CBC.0151`），不透传服务端 `error_msg`，避免第三方响应夹带账号信息。
+- **前端与演示**：类型、筛选、`akSk` 双字段、中英文文案注册到元数据表；演示模式使用独立快照分支，余额与欠款均为虚构演示数据。
 
 ---
 

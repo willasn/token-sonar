@@ -190,7 +190,10 @@ function CardMid({
   onCardView: (next: "metrics" | "quota") => void;
 }) {
   const hasQuota = quotas.length > 0;
-  const balanceOnly = !!providerInfo(p).balanceOnly;
+  const info = providerInfo(p);
+  // 同一渠道可能既有按量余额、也有套餐额度：有额度按套餐展示，否则按余额展示
+  const quotaOnly = !!info.quotaOnly || (!!info.dualAccountView && hasQuota);
+  const balanceOnly = !!info.balanceOnly || (!!info.dualAccountView && !hasQuota);
   let view: "metrics" | "quota" =
     p.cardView === "quota" || p.cardView === "metrics" ? p.cardView : hasQuota ? "quota" : "metrics";
   if (view === "quota" && !hasQuota) view = "metrics";
@@ -198,8 +201,8 @@ function CardMid({
   const title = view === "quota" ? t("providers.card.showMetrics") : t("providers.card.showQuota");
   return (
     <div className="pcard-mid">
-      {providerInfo(p).quotaOnly || view === "quota" ? <QuotaRow quotas={quotas} /> : <MetricsRow snap={snap} cur={cur} today={today} balanceOnly={balanceOnly} billingUsage={!!providerInfo(p).billingUsage} />}
-      {hasQuota && !providerInfo(p).quotaOnly ? (
+      {quotaOnly || view === "quota" ? <QuotaRow quotas={quotas} /> : <MetricsRow snap={snap} cur={cur} today={today} balanceOnly={balanceOnly} billingUsage={!!info.billingUsage} />}
+      {hasQuota && !quotaOnly ? (
         <button
           type="button"
           className="btn btn-icon btn-ghost pcard-mid-toggle"
@@ -286,6 +289,8 @@ function Card(props: ItemProps) {
   const err = snap && snap.error;
   const quotas = (snap && snap.quotas) || [];
   const url = consoleUrl(p);
+  const kindName = t(info.name);
+  const showKindName = p.name.trim() !== kindName;
   const accentStyle = { "--p-accent": accent } as CSSProperties;
 
   return (
@@ -325,6 +330,7 @@ function Card(props: ItemProps) {
             ) : null}
           </div>
           <div className="meta">
+            {showKindName ? <span className="kind-tag">{kindName} · </span> : null}
             {p.baseUrl || (info.official ? info.url.placeholder : t("providers.noBaseUrl"))}
             {snap && snap.account ? " · " + snap.account : ""}
             {" · " + modeLabel(p.kind, p.accessMode === "login" ? "login" : "api")}
@@ -346,7 +352,7 @@ function Card(props: ItemProps) {
 
       <div className="pcard-foot">
         <div className="spark" data-spark={p.id}>
-          {!info.quotaOnly && ((!info.balanceOnly && !info.billingUsage) || (snap?.days.length ?? 0) > 0) ? (
+          {!info.quotaOnly && !info.dualAccountView && ((!info.balanceOnly && !info.billingUsage) || (snap?.days.length ?? 0) > 0) ? (
             <Sparkline values={((snap && snap.days) || []).slice(-14).filter((d) => usageValue(snap, d.cost) != null).map((d) => d.cost || 0)} height={34} color={accent} />
           ) : null}
         </div>
@@ -374,6 +380,8 @@ function Row(props: ItemProps) {
   const err = snap && snap.error;
   const quotas = (snap && snap.quotas) || [];
   const url = consoleUrl(p);
+  const kindName = t(info.name);
+  const showKindName = p.name.trim() !== kindName;
   const accentStyle = { "--p-accent": accent } as CSSProperties;
 
   return (
@@ -395,6 +403,7 @@ function Row(props: ItemProps) {
       <div className="prow-main">
         <div className="prow-top">
           <span className="name">{p.name}</span>
+          {showKindName ? <span className="prow-kind">{kindName}</span> : null}
           <span className={"chip " + chip.cls}>{chip.label}</span>
           {url ? (
             <button

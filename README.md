@@ -139,6 +139,9 @@ TokenSonar/
             ├── bailian.rs    # 阿里云百炼（BSS 账单、团队 Credits）适配器
             ├── bailian_cli.rs # 百炼个人 Harness / Coding 官方 CLI 只读查询
             ├── mimo.rs       # 小米 MiMo（登录 Cookie → 控制台接口）适配器
+            ├── siliconflow.rs # 硅基流动（账户余额）适配器
+            ├── stepfun.rs    # 阶跃星辰（账户余额）适配器
+            ├── pangu.rs      # 华为云盘古（AK/SK 签名 → 费用中心余额）适配器
             └── util.rs       # 字段无关的容错 JSON 解析工具
 ```
 
@@ -207,6 +210,10 @@ TokenSonar/
   读账户余额（billing）、Coding Plan / Agent Plan 套餐与模型信息（ark）。
 - `mimo.rs`：登录 Cookie 会话调用小米 MiMo 控制台内部接口，读余额、逐日逐模型用量、
   月度账单与 Token Plan 额度；控制台接口无公开文档，解析全部容错。
+- `siliconflow.rs`：官方 `/v1/user/info` 读总余额、充值余额与赠送余额（无用量统计）。
+- `stepfun.rs`：官方 `/v1/accounts` 读可用余额、累计充值与累计赠送（无用量统计）。
+- `pangu.rs`：华为云 `SDK-HMAC-SHA256` 签名调用费用中心 `/v2/accounts/customer-accounts/balances`，
+  读账户余额分项与欠款（华为云整体余额，非盘古专属；盘古用量仅控制台可见）。
 - `util.rs`：`to_f64` / `pick` / `pick_f64` / `pick_string` / `record_arrays` /
   `find_usage_records` / `record_date` / `recent_dates` 等容错工具。
 
