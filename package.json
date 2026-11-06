@@ -1,6 +1,6 @@
 {
   "name": "token-sonar",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "TokenSonar — 汇总监控各家 AI 厂商 Token 用量 / 请求次数 / 余额 / 费用的桌面应用",
   "scripts": {
