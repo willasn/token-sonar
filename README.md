@@ -130,6 +130,7 @@ TokenSonar/
         ├── commands.rs      # 暴露给前端的 Tauri 命令
         ├── login.rs         # 外置登录窗口：站点授权后取回凭证
         ├── sync.rs          # Git 仓库同步：导出 JSON → 提交 → 推送
+        ├── auto_update.rs   # 应用更新：并行探测 R2 / GitHub 更新源
         └── providers/
             ├── mod.rs        # 分发：fetch_snapshot / probe
             ├── deepseek.rs   # DeepSeek 适配器
@@ -142,6 +143,7 @@ TokenSonar/
             ├── siliconflow.rs # 硅基流动（账户余额）适配器
             ├── stepfun.rs    # 阶跃星辰（账户余额）适配器
             ├── pangu.rs      # 华为云盘古（AK/SK 签名 → 费用中心余额）适配器
+            ├── ppio.rs       # PPIO 派欧云（余额 + LLM 按日账单）适配器
             └── util.rs       # 字段无关的容错 JSON 解析工具
 ```
 
@@ -214,6 +216,8 @@ TokenSonar/
 - `stepfun.rs`：官方 `/v1/accounts` 读可用余额、累计充值与累计赠送（无用量统计）。
 - `pangu.rs`：华为云 `SDK-HMAC-SHA256` 签名调用费用中心 `/v2/accounts/customer-accounts/balances`，
   读账户余额分项与欠款（华为云整体余额，非盘古专属；盘古用量仅控制台可见）。
+- `ppio.rs`：PPIO 管理 API 读账户余额（`/openapi/v1/billing/balance/detail`）与近 30 天
+  LLM 按日账单（`/openapi/v1/billing/bill/list`），按日期 / 模型聚合 Token、请求数与费用。
 - `util.rs`：`to_f64` / `pick` / `pick_f64` / `pick_string` / `record_arrays` /
   `find_usage_records` / `record_date` / `recent_dates` 等容错工具。
 
@@ -260,6 +264,8 @@ TokenSonar/
 | `get_app_info` | — | `{ name, version, dataDir }` | 关于信息 |
 | `open_data_dir` | — | `null` | 在系统文件管理器中打开数据目录 |
 | `open_external_url` | `{ url }` | `null` | 用系统默认浏览器打开外部链接（厂商控制台） |
+| `auto_update_check` | — | `{ hasUpdate, current, latest, notes, publishedAt }` | 并行探测 R2 / GitHub 更新源（单源超时 5 秒） |
+| `auto_update_install` | — | `null` | 下载并安装更新，成功后自动重启 |
 
 ---
 

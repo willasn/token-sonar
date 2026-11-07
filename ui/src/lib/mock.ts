@@ -344,6 +344,24 @@ const DEMO_PROVIDERS: ProviderConfig[] = [
     createdAt: "2026-09-24 10:00:00",
     updatedAt: "2026-09-24 10:00:00",
   },
+  {
+    id: "pv_demo_ppio",
+    name: "PPIO 派欧云（演示）",
+    kind: "ppio",
+    enabled: true,
+    baseUrl: "https://api.ppio.com",
+    authType: "token",
+    accessMode: "api",
+    token: "sk-demo-ppio-key",
+    icon: "PP",
+    accent: "#2563eb",
+    currency: "CNY",
+    quotaPerUnit: 500000,
+    displayInCurrency: true,
+    notes: "演示数据：API Key 读取账户余额与近 30 天 LLM 按日账单",
+    createdAt: "2026-10-02 10:00:00",
+    updatedAt: "2026-10-02 10:00:00",
+  },
 ];
 
 const DEMO_MODELS_DS = ["deepseek-chat", "deepseek-reasoner"];
@@ -527,10 +545,12 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
   const isKimi = p.kind === "kimi";
   const isMimo = p.kind === "mimo";
   const isSf = p.kind === "siliconflow";
+  const isPpio = p.kind === "ppio";
   const hasUsage =
     (isDs && p.accessMode === "login" && !!p.sessionToken) ||
     (isMimo && p.accessMode === "login" && !!p.sessionToken) ||
     p.kind === "newapi" ||
+    isPpio ||
     !!kindInfo(p.kind).independentUsageSources;
   const kimiCurrency = isKimi && new URL(p.baseUrl || "https://api.moonshot.cn").hostname === "api.moonshot.ai" ? "USD" : "CNY";
   const pool = isDs ? DEMO_MODELS_DS : isMimo ? DEMO_MODELS_MIMO : DEMO_MODELS_NA;
@@ -579,7 +599,7 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
     ok: true,
     error: null,
     account: isDs || isKimi || isSf ? null : isMimo ? "demo@mimo.example.com" : isVe ? "2100000001" : isGlm ? "demo@bigmodel.cn" : "demo",
-    balance: isKimi ? 88.6 : isSf ? 66.8 : isDs ? 128.42 : isMimo ? 286.5 : isVe ? 986.42 : isGlm ? 42.5 : 36.75,
+    balance: isKimi ? 88.6 : isSf ? 66.8 : isPpio ? 50 : isDs ? 128.42 : isMimo ? 286.5 : isVe ? 986.42 : isGlm ? 42.5 : 36.75,
     balanceRaw: p.kind === "newapi" ? 18375000 : null,
     granted: isDs ? 50 : null,
     used: hasUsage ? Number((costTotal * (isDs ? 1 : 1.6)).toFixed(2)) : isGlm ? 57.5 : null,
@@ -662,6 +682,13 @@ function genSnapshot(p: ProviderConfig): UsageSnapshot {
       { label: `总余额（${p.currency}）`, value: "66.80", hint: "硅基流动官方账户接口" },
       { label: `充值余额（${p.currency}）`, value: "60.00", hint: null },
       { label: `赠送余额（${p.currency}）`, value: "6.80", hint: null },
+    ];
+  } else if (isPpio) {
+    snap.metrics = [
+      { label: `可用余额（${p.currency}）`, value: "50.00", hint: "演示数据；PPIO 账单余额接口" },
+      { label: `现金余额（${p.currency}）`, value: "50.00", hint: null },
+      { label: "近 30 天 LLM 消费（CNY）", value: costTotal.toFixed(2), hint: "近 30 天 LLM 按日账单，不含 GPU / 存储" },
+      { label: "近 30 天 Token", value: String(tokensTotal), hint: reqTotal + " 次请求" },
     ];
   } else if (isMimo) {
     snap.metrics = [
@@ -1066,6 +1093,10 @@ export async function mockInvoke(cmd: string, args: Record<string, any>): Promis
       saveDemo(db);
       return { ok: true, message: msg, commit: "demo123", changed: true, fileCount: 3, syncedAt: at };
     }
+    case "auto_update_check":
+      return { hasUpdate: false, current: "0.0.0", latest: null, notes: null, publishedAt: null };
+    case "auto_update_install":
+      throw new Error("演示模式不支持安装更新");
     default:
       throw new Error("演示模式未实现命令: " + cmd);
   }

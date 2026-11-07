@@ -7,6 +7,7 @@ pub mod mimo;
 pub mod minimax;
 pub mod newapi;
 pub mod pangu;
+pub mod ppio;
 pub mod siliconflow;
 pub mod stepfun;
 pub mod util;
@@ -32,6 +33,7 @@ pub async fn fetch_snapshot(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot 
         ProviderKind::Siliconflow => siliconflow::fetch(cfg, http).await,
         ProviderKind::Stepfun => stepfun::fetch(cfg, http).await,
         ProviderKind::Pangu => pangu::fetch(cfg, http).await,
+        ProviderKind::Ppio => ppio::fetch(cfg, http).await,
     };
     if !matches!(cfg.kind, ProviderKind::Bailian | ProviderKind::Hunyuan) {
         snap.days = crate::providers::newapi::fill_days(std::mem::take(&mut snap.days), WINDOW_DAYS);
@@ -55,6 +57,7 @@ pub async fn probe(cfg: &ProviderConfig) -> Result<String, String> {
         ProviderKind::Siliconflow => siliconflow::probe(cfg, &http).await,
         ProviderKind::Stepfun => stepfun::probe(cfg, &http).await,
         ProviderKind::Pangu => pangu::probe(cfg, &http).await,
+        ProviderKind::Ppio => ppio::probe(cfg, &http).await,
     }
 }
 

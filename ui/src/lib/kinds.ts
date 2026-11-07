@@ -267,6 +267,20 @@ export const KIND_INFO: Record<ProviderKind, KindInfo> = {
     balanceOnly: true,
     usageScope: "usage.panguScope",
   },
+  ppio: {
+    name: "kind.ppio.name",
+    desc: "kind.ppio.desc",
+    icon: "PP",
+    accent: "#2563eb",
+    chip: "chip-accent",
+    kindLabel: "providers.kindPpio",
+    detailLabel: "detail.kindPpio",
+    official: true,
+    console: "https://ppio.com/",
+    url: { label: "form.apiUrl", hint: "form.ppioUrlHint", placeholder: "https://api.ppio.com" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.ppioKeyHint" },
+    usageScope: "usage.ppioScope",
+  },
 };
 
 const PLAN_INFO: Record<string, Partial<KindInfo>> = {
@@ -302,7 +316,7 @@ export function providerInfo(provider: { kind: string; planType?: ProviderConfig
   return info.plans && provider.planType ? { ...info, ...PLAN_INFO[provider.planType] } : info;
 }
 
-export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan", "mimo", "minimax", "siliconflow", "stepfun", "pangu"];
+export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan", "mimo", "minimax", "siliconflow", "stepfun", "pangu", "ppio"];
 
 export function usageValue(snap: UsageSnapshot | null, value: number | null | undefined): number | null {
   return snap && kindInfo(snap.kind).independentUsageSources && (value == null || value < 0) ? null : value ?? null;
@@ -337,6 +351,7 @@ export const MODES_BY_KIND: Record<ProviderKind, AccessModeKey[]> = {
   siliconflow: ["api"],
   stepfun: ["api"],
   pangu: ["api"],
+  ppio: ["api"],
 };
 
 interface ModeInfo {
@@ -388,6 +403,9 @@ export const MODE_INFO: Record<string, Partial<Record<AccessModeKey, ModeInfo>>>
   pangu: {
     api: { label: "mode.pangu.api.label", desc: "mode.pangu.api.desc", gets: "mode.pangu.api.gets" },
   },
+  ppio: {
+    api: { label: "mode.api.label", desc: "mode.ppio.api.desc", gets: "mode.ppio.api.gets" },
+  },
 };
 
 export const FILTERS = [
@@ -404,6 +422,7 @@ export const FILTERS = [
   { key: "siliconflow", label: "filter.siliconflow" },
   { key: "stepfun", label: "filter.stepfun" },
   { key: "pangu", label: "filter.pangu" },
+  { key: "ppio", label: "filter.ppio" },
   { key: "error", label: "filter.error" },
   { key: "off", label: "filter.off" },
 ];

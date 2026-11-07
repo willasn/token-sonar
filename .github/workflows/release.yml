@@ -126,3 +126,109 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  # 构建完成后把安装包同步到 Cloudflare R2（公共只读分发的镜像）。
+  # 认证信息全部来自 GitHub Secrets，不落仓库。
+  # 该桶为多应用共用（software），TokenSonar 的产物统一放在 token-sonar/ 前缀下。
+  publish-r2:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          gh release download "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --dir dist
+
+      - name: Check R2 secrets
+        shell: bash
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          missing=""
+          for name in R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::缺少仓库 Secrets:$missing"
+            exit 1
+          fi
+          echo "R2 secrets 已配置"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_BASE: https://dl.panpan.space
+          R2_PREFIX: token-sonar
+        run: |
+          set -euo pipefail
+
+          # 安装包按版本分目录存放：token-sonar/<version>/<文件名>。
+          # 文件名本身不带版本号，如果所有版本都放在同一个 key 上，配合下面 immutable
+          # 的长缓存，Cloudflare 边缘会一直返回首次缓存的旧安装包，客户端拿旧包去比对
+          # latest.json 里的新签名就会报 "The signature verification failed"。
+          # 把版本写进路径后，每个版本的 URL 天然唯一，immutable 缓存才是安全的。
+          VERSION="${GITHUB_REF_NAME#v}"
+          R2_DIR="${R2_PREFIX}/${VERSION}"
+
+          # 1. 把 latest.json 里的下载地址从 GitHub Release 改写到 R2 的版本目录。
+          #    signature 是对文件内容签名的，与 url 无关，改写不会破坏更新校验。
+          if [ -f dist/latest.json ]; then
+            gh_prefix="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/"
+            jq --arg p "$gh_prefix" --arg b "${R2_BASE}/${R2_DIR}/" \
+              '.platforms |= with_entries(
+                 .value.url |= (if startswith($p) then $b + .[($p | length):] else . end)
+               )' dist/latest.json > dist/latest.json.tmp
+            mv dist/latest.json.tmp dist/latest.json
+            cat dist/latest.json
+          fi
+
+          # 2. 上传安装包到版本目录。路径里带版本号，内容不会变，可以长缓存。
+          for f in dist/*; do
+            name="$(basename "$f")"
+            [ "$name" = "latest.json" ] && continue
+            echo "上传 $R2_DIR/$name"
+            aws s3 cp "$f" "s3://$BUCKET/$R2_DIR/$name" \
+              --endpoint-url "$R2_ENDPOINT" \
+              --cache-control "public, max-age=31536000, immutable"
+          done
+
+          # 3. 删除其他版本的旧文件（先传后删，避免下载地址 404 窗口）。
+          #    只保留本次的版本目录与 latest.json 指针本身。
+          existing="$(aws s3api list-objects-v2 \
+            --bucket "$BUCKET" \
+            --prefix "$R2_PREFIX/" \
+            --query 'Contents[].Key' \
+            --output text \
+            --endpoint-url "$R2_ENDPOINT")"
+          [ "$existing" = "None" ] && existing=""
+          for key in $existing; do
+            case "$key" in
+              "$R2_DIR/"*) continue ;;
+              "$R2_PREFIX/latest.json") continue ;;
+            esac
+            echo "删除旧文件 $key"
+            aws s3 rm "s3://$BUCKET/$key" --endpoint-url "$R2_ENDPOINT"
+          done
+
+          # 4. 最后更新指针，保证 latest.json 生效时文件一定已就位。
+          if [ -f dist/latest.json ]; then
+            aws s3 cp dist/latest.json "s3://$BUCKET/$R2_PREFIX/latest.json" \
+              --endpoint-url "$R2_ENDPOINT" \
+              --content-type "application/json" \
+              --cache-control "no-cache"
+          else
+            echo "latest.json 不存在，跳过指针更新"
+          fi

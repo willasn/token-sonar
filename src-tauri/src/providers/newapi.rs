@@ -816,7 +816,7 @@ pub fn today_period(days: &[DailyUsage]) -> Option<PeriodUsage> {
 }
 
 /// 当前自然月的汇总（与站点控制台按自然月统计的口径一致），供详情页「本月」卡片使用。
-fn month_period(days: &[DailyUsage]) -> Option<PeriodUsage> {
+pub fn month_period(days: &[DailyUsage]) -> Option<PeriodUsage> {
     let today = today_str();
     let ym = today.get(..7)?.to_string();
     let mut period = PeriodUsage {

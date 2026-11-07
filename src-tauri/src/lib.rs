@@ -1,3 +1,4 @@
+mod auto_update;
 mod commands;
 mod http;
 mod login;
@@ -41,6 +42,8 @@ pub fn run() {
             commands::test_sync_connection,
             commands::pull_remote_backup,
             commands::sync_to_repo,
+            auto_update::auto_update_check,
+            auto_update::auto_update_install,
             login::start_deepseek_login,
             login::deepseek_login_token,
             login::start_mimo_login,

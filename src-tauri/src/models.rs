@@ -45,6 +45,9 @@ pub enum ProviderKind {
     /// 华为云盘古 Pangu（AK/SK 签名读取华为云账户余额）
     #[serde(rename = "pangu")]
     Pangu,
+    /// PPIO 派欧云（API Key 读取账户余额与 LLM 按日账单）
+    #[serde(rename = "ppio")]
+    Ppio,
 }
 
 impl ProviderKind {
@@ -62,6 +65,7 @@ impl ProviderKind {
             ProviderKind::Siliconflow => "siliconflow",
             ProviderKind::Stepfun => "stepfun",
             ProviderKind::Pangu => "pangu",
+            ProviderKind::Ppio => "ppio",
         }
     }
 
@@ -84,6 +88,8 @@ impl ProviderKind {
             ProviderKind::Stepfun => "https://api.stepfun.com",
             // 华为云费用中心固定域名（非盘古推理 Base URL）
             ProviderKind::Pangu => "https://bss.myhuaweicloud.com",
+            // PPIO 管理 API 域名（余额 / 账单）；推理地址为 https://api.ppinfra.com/v3/openai
+            ProviderKind::Ppio => "https://api.ppio.com",
         }
     }
 
@@ -101,6 +107,7 @@ impl ProviderKind {
             ProviderKind::Siliconflow => "硅基流动 / SiliconFlow",
             ProviderKind::Stepfun => "阶跃星辰 / StepFun",
             ProviderKind::Pangu => "盘古 / 华为云",
+            ProviderKind::Ppio => "PPIO / 派欧云",
         }
     }
 

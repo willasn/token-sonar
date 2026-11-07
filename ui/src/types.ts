@@ -12,7 +12,8 @@ export type ProviderKind =
   | "minimax"
   | "siliconflow"
   | "stepfun"
-  | "pangu";
+  | "pangu"
+  | "ppio";
 export type AuthType = "token" | "password";
 export type AccessMode = "api" | "login";
 export type Currency = string;

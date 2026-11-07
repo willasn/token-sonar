@@ -25,6 +25,8 @@ const COMMANDS: &[&str] = &[
     "test_sync_connection",
     "pull_remote_backup",
     "sync_to_repo",
+    "auto_update_check",
+    "auto_update_install",
     "start_deepseek_login",
     "deepseek_login_token",
     "start_mimo_login",

@@ -111,6 +111,7 @@
 | **硅基流动 SiliconFlow** | `api` | 开放平台 API Key | 国内 `https://api.siliconflow.cn`（默认，CNY）；国际 `https://api.siliconflow.com`（USD），可改 | 官方账户信息接口 `/v1/user/info`：总余额（`totalBalance`）、充值余额（`chargeBalance`）、赠送余额（`balance`）；不提供逐日用量、模型统计或 API Key 列表（无登录授权方式） |
 | **阶跃星辰 StepFun** | `api` | 开放平台 API Key | 国内 `https://api.stepfun.com`（默认，CNY）；国际 `https://api.stepfun.ai`（USD），可改 | 官方账户接口 `GET /v1/accounts`：可用余额（`balance`）、累计充值（`total_cash_balance`）、累计赠送（`total_voucher_balance`）、账户类型（`prepaid` / `postpaid`）；不提供逐日用量、模型统计或 API Key 列表（无登录授权方式） |
 | **华为云盘古 Pangu** | `api` | 华为云 Access Key ID + Secret Access Key（AK/SK，非盘古 API Key） | 固定 `https://bss.myhuaweicloud.com`（华为云费用中心，非盘古推理 Base URL） | `GET /v2/accounts/customer-accounts/balances`（SDK-HMAC-SHA256 签名）：华为云账户整体余额分项（余额 / 信用 / 奖励金 / 保证金）与欠款总额；盘古调用统计仅 ModelArts Studio 控制台可见，公开接口不提供逐日用量、Token 或模型统计 |
+| **PPIO 派欧云** | `api` | PPIO API Key | 默认 `https://api.ppio.com`（管理接口，可改；推理地址为 `https://api.ppinfra.com/v3/openai`） | `GET /openapi/v1/billing/balance/detail`：可用余额、现金、信用额度、欠费；`GET /openapi/v1/billing/bill/list?cycleType=Day&productCategory=llm`：近 30 天按日 / 按模型的 LLM Token、请求数与费用（不含 GPU / 存储 / 生成类 API） |
 
 旧配置迁移：加载时若没有 `accessMode`，按「有会话凭证即视为登录方式」推断，并把历史的
 `platformToken` 归位到 `sessionToken`（`models.rs` 的 `normalize()`，`storage.rs` 载入时执行）。
@@ -143,6 +144,8 @@ New API 已移除「登录授权」链路，历史登录型配置会被 `normali
   - 华为云盘古 `api`：**Access Key ID + Secret Access Key**，华为云「我的凭证 - 访问密钥」创建，非盘古 API Key；
     复用 `KIND_INFO.akSk` 双字段，需 BSS 只读权限 `billing:balance:view`；固定费用中心域名，
     余额为华为云账户整体余额（非盘古专属），无登录授权方式
+  - PPIO 派欧云 `api`：**API Key**，在 PPIO 控制台「API 密钥」创建；读取账户余额与近 30 天 LLM
+    按日账单（Token / 请求数 / 费用），不含 GPU、存储与生成类 API（无登录授权方式）
 - New API 专属：展示货币、积分兑换比、是否换算为货币
 - 已移除「用户名 + 密码」表单入口：登录常有人机验证，服务端直连接口过不去，DeepSeek 统一走弹窗登录
   （账号密码直连仅作为后端能力保留，UI 未暴露）；New API 只保留系统访问令牌，不再有网页登录授权
@@ -407,6 +410,17 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 
 ---
 
+### 8.9 PPIO 派欧云 / PPIO 适配器
+
+- **公开只读接口**：`GET https://api.ppio.com/openapi/v1/billing/balance/detail`（Bearer API Key），返回 `availableBalance` / `cashBalance` / `creditLimit` / `outstandingInvoices`，单位均为 1/10000 元（10000 = 1 元）。
+- **用量账单**：`GET https://api.ppio.com/openapi/v1/billing/bill/list?cycleType=Day&productCategory=llm&startTime=…&endTime=…`，按天返回各行模型的 `billNum0`（输入 Token）、`billNum1`（输出 Token）、`billNum2` / `billNum3` / `billNum5`（缓存 Token）、`requestCount` 与 `amountDecimal`（单位元）。应用按日期与模型聚合，取近 30 天数据。
+- **补充额度**：`GET /v3/user` 的 `credit_balance`（1/10000 元）仅作为补充指标展示，可能与可用余额不同。
+- **能力边界**：只覆盖 LLM API 按量消费，不含 GPU、存储与生成类 API；账单仅有按日粒度，不提供 API Key 列表或登录授权方式。
+- **错误处理**：余额接口失败时整次刷新报错；账单接口失败时保留余额并提示「用量数据不可用」，不把未读到的数据记作零。
+- **前端与演示**：类型、筛选、接入方式、中英文文案注册到元数据表；演示模式使用独立快照分支，余额与用量均为虚构演示数据。
+
+---
+
 ## 9. 设置
 
 | 项目 | 选项 | 状态 |
@@ -417,7 +431,7 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 | 刷新间隔 | 5 / 10 / 15 / 30 / 60 分钟 | 已实现 |
 | 数据目录 | 展示路径 + 一键在系统文件管理器中打开 | 已实现 |
 | 关于信息 | 版本、运行环境、账号数量 | 已实现 |
-| 应用更新 | 启动静默检查 + 手动「检查更新」，从 GitHub Releases 下载安装并重启 | 已实现 |
+| 应用更新 | 启动静默检查 + 手动「检查更新」，并行查询 R2 镜像与 GitHub Releases 后下载安装并重启 | 已实现 |
 | Git 配置同步 | 仓库地址 / 用户名 / 密码或令牌 / 提交作者邮箱 / 分支（首次同步自动保存）+ 一键同步（先拉取合并，冲突可选） | 已实现 |
 
 ---
@@ -446,17 +460,18 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 
 ## 9.2 应用内更新
 
-基于 Tauri 官方 updater 插件，从 GitHub Releases 检查并安装新版本，无需用户手动下载安装包。
+基于 Tauri 官方 updater 插件，同时从 Cloudflare R2 镜像与 GitHub Releases 检查并安装新版本，无需用户手动下载安装包。
 
 | 项目 | 说明 |
 | --- | --- |
 | 检查时机 | 应用启动就绪后延迟 4 秒静默检查一次（失败不打扰），设置页提供手动「检查更新」按钮 |
-| 更新源 | `https://github.com/willasn/token-sonar/releases/latest/download/latest.json`（随 `tauri.conf.json` 的 `plugins.updater.endpoints` 配置） |
+| 更新源 | `https://dl.panpan.space/token-sonar/latest.json`（R2 镜像）与 `https://github.com/willasn/token-sonar/releases/latest/download/latest.json`，随 `tauri.conf.json` 的 `plugins.updater.endpoints` 配置 |
+| 检查策略 | Rust 侧并行请求所有源，单源超时 5 秒；按 `latest.json` 的版本号降序选择最高版本，安装失败自动回退下一个源 |
 | 安全校验 | 更新包使用 minisign 签名，安装前用内置公钥（`plugins.updater.pubkey`）核对完整性；私钥仅存于 GitHub Secrets，不入库 |
-| 交互 | 发现新版本 → 弹窗展示版本号与更新说明 → 「下载并安装」（带进度条）→ 「重启并应用」 |
-| 平台差异 | Windows 安装后由安装器自动重启；macOS 需应用内重启 |
+| 交互 | 发现新版本 → 弹窗展示版本号与更新说明 → 「下载并安装」（带进度条）→ 安装成功后自动重启 |
+| 平台差异 | Windows 安装后由安装器自动重启；macOS 由 Rust 侧在安装完成后重启应用 |
 | 演示模式 | 非 Tauri 环境（浏览器预览）不执行检查，按钮置灰并提示不支持 |
-| 发布流程 | 打 `v*` 标签触发 `.github/workflows/release.yml`，由 `tauri-action` 产出正式 Release 与 `latest.json`；发版前需同步提升 `Cargo.toml`、`tauri.conf.json` 与 `package.json` 的版本号 |
+| 发布流程 | 打 `v*` 标签触发 `.github/workflows/release.yml`，由 `tauri-action` 产出正式 Release 与 `latest.json`；`publish-r2` job 再把安装包与改写下载地址后的 `latest.json` 同步到 R2 的 `token-sonar/<version>/`，发版前需同步提升版本号 |
 
 ---
 

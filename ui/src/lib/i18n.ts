@@ -183,6 +183,20 @@ const zh: Record<string, string> = {
     "使用华为云「我的凭证 - 访问密钥」创建的 AK/SK，非盘古 API Key。需 BSS 只读权限 billing:balance:view；余额为华为云账户整体余额，非盘古专属。",
   "usage.panguScope":
     "余额为华为云账户整体余额，含余额、信用、奖励金、保证金与欠款分项，非盘古专属；盘古调用统计仅在 ModelArts Studio 控制台可见，公开接口不提供逐日用量或模型统计。",
+  "kind.ppio.name": "PPIO / 派欧云",
+  "kind.ppio.desc": "用 API Key 读取账户余额与近 30 天 LLM 按日账单（Token / 请求 / 费用）",
+  "mode.ppio.api.desc": "PPIO 派欧云 API Key",
+  "mode.ppio.api.gets":
+    "账户可用余额、现金余额、信用额度与欠费；近 30 天 LLM 按日 / 按模型的 Token、请求数与费用（不含 GPU / 存储消费）",
+  "filter.ppio": "PPIO 派欧云",
+  "providers.kindPpio": "PPIO 派欧云",
+  "detail.kindPpio": "PPIO / 派欧云",
+  "form.ppioUrlHint":
+    "默认管理 API https://api.ppio.com（余额 / 账单）；推理地址为 https://api.ppinfra.com/v3/openai，本应用只读管理接口",
+  "form.ppioKeyHint":
+    "在 PPIO 控制台「API 密钥」创建，仅保存在本机；读取余额与 LLM 按日账单，不含 GPU、存储与生成类 API 消费",
+  "usage.ppioScope":
+    "余额来自 PPIO 账单余额接口；Token、请求数与费用来自近 30 天 LLM 按日账单，按模型归集，不含 GPU / 存储 / 生成类 API。",
   "form.minimaxUrlHint":
     "国内账号用 https://api.minimaxi.com（默认），海外账号改为 https://api.minimax.io；两站的账号与 Key 互不通用",
   "form.minimaxKeyHint":
@@ -754,6 +768,21 @@ const en: Record<string, string> = {
     "Use an AK/SK created in Huawei Cloud 'My Credentials - Access Keys', not a Pangu API key. Requires the BSS read-only permission billing:balance:view; the balance is the whole Huawei Cloud account balance, not Pangu-specific.",
   "usage.panguScope":
     "Balance is the whole Huawei Cloud account balance, broken down into cash, credit, reward, deposit and debt — not Pangu-specific. Pangu usage stats are only available in the ModelArts Studio console; no public daily usage or model stats API.",
+  "kind.ppio.name": "PPIO",
+  "kind.ppio.desc":
+    "Read account balance and the last 30 days of LLM daily bills (tokens / requests / cost) with an API key",
+  "mode.ppio.api.desc": "PPIO official API key",
+  "mode.ppio.api.gets":
+    "Available balance, cash, credit limit and arrears; last 30 days of LLM daily / per-model tokens, requests and cost (excluding GPU and storage)",
+  "filter.ppio": "PPIO",
+  "providers.kindPpio": "PPIO",
+  "detail.kindPpio": "PPIO / PPIO Cloud",
+  "form.ppioUrlHint":
+    "Management API defaults to https://api.ppio.com (balance / bills). The inference base URL is https://api.ppinfra.com/v3/openai; this app only reads management APIs",
+  "form.ppioKeyHint":
+    "Create an API key in the PPIO console. Stored locally only; reads balance and LLM daily bills, excluding GPU, storage and generation APIs",
+  "usage.ppioScope":
+    "Balance comes from the PPIO billing balance API; tokens, requests and cost come from the last 30 days of LLM daily bills grouped by model, excluding GPU / storage / generation APIs.",
   "form.minimaxUrlHint":
     "China accounts use https://api.minimaxi.com (default); international accounts use https://api.minimax.io. Accounts and keys are not interchangeable across regions",
   "form.minimaxKeyHint":
