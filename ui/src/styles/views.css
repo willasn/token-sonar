@@ -550,6 +550,14 @@
   color: #fff;
 }
 
+/* 暂不支持的筛选：置灰且不可点击 */
+.filter-pill.is-disabled,
+.filter-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
 /* 顶部右侧：账号计数 + 卡片 / 列表形态切换 */
 .plist-tools {
   margin-left: auto;

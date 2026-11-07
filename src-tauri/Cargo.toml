@@ -1,6 +1,6 @@
 [package]
 name = "token-sonar"
-version = "0.1.0"
+version = "0.1.5"
 description = "TokenSonar - 多厂商 AI Token 用量 / 余额 / 费用监控台"
 authors = ["TokenSonar"]
 edition = "2021"
@@ -15,7 +15,7 @@ crate-type = ["rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["devtools"] }
+tauri = { version = "2", features = ["devtools", "tray-icon"] }
 # 应用内自动更新：从 GitHub Releases 检查、下载并安装签名更新包
 tauri-plugin-updater = "2"
 # 更新安装完成后重启应用

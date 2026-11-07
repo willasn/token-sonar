@@ -14,8 +14,8 @@ import { api, listen } from "../lib/api";
 import { t } from "../lib/i18n";
 import { Icon } from "../lib/icons";
 import {
+  KIND_GROUPS,
   KIND_INFO,
-  KIND_ORDER,
   MODES,
   MODES_BY_KIND,
   MODE_INFO,
@@ -189,6 +189,11 @@ function ProviderFormBody({ model }: { model: FormModel }) {
   const cred = (mode === "login" ? info.login : info.api) || info.api;
 
   const [loginBusy, setLoginBusy] = useState(false);
+  // 一级渠道类型的国内 / 国际切换：默认跟随当前选中厂商的归属
+  const [region, setRegion] = useState<"cn" | "intl">(() =>
+    kindInfo(d.kind).region === "intl" ? "intl" : "cn"
+  );
+  const activeGroup = KIND_GROUPS.find((g) => g.region === region) || KIND_GROUPS[0];
 
   const setField = (patch: Partial<ProviderConfig>) => {
     model.setDraft({ ...model.draft, ...patch });
@@ -214,8 +219,21 @@ function ProviderFormBody({ model }: { model: FormModel }) {
     const keys = MODES_BY_KIND[next] || MODES_BY_KIND.deepseek;
     let accessMode = cur.accessMode || "api";
     if (keys.indexOf(accessMode) < 0) accessMode = keys[0];
-    model.setDraft({ ...cur, kind: next, name, accent, baseUrl, accessMode, icon: nextInfo.icon });
+    // 国际厂商默认按 USD 展示，切回国内厂商时恢复 CNY
+    const currency =
+      nextInfo.region === "intl" ? "USD" : prevInfo.region === "intl" ? "CNY" : cur.currency || "CNY";
+    model.setDraft({ ...cur, kind: next, name, accent, baseUrl, accessMode, currency, icon: nextInfo.icon });
     model.setNote("");
+  }
+
+  /** 切换国内 / 国际大类：当前选中厂商不属于该大类时，自动选中该大类第一个可用厂商 */
+  function switchRegion(next: "cn" | "intl") {
+    setRegion(next);
+    const cur = model.draft;
+    const curRegion = kindInfo(cur.kind).region === "intl" ? "intl" : "cn";
+    const group = KIND_GROUPS.find((g) => g.region === next);
+    const target = group?.kinds.find((k) => !KIND_INFO[k].unsupported);
+    if (curRegion !== next && target) switchKind(target);
   }
 
   /** 只切换接入方式，其它字段（含另一种方式的凭证）原样保留 */
@@ -263,21 +281,41 @@ function ProviderFormBody({ model }: { model: FormModel }) {
           <span className="pick-tag is-primary">{t("form.level1")}</span>
           {t("form.type")}
         </div>
-        <div className="kind-pick is-primary" id="kindPick">
-          {KIND_ORDER.map((k) => {
+        <div className="region-tabs" id="kindPick">
+          {KIND_GROUPS.map((group) => (
+            <button
+              key={group.region}
+              type="button"
+              className={"filter-pill" + (region === group.region ? " is-active" : "")}
+              onClick={() => switchRegion(group.region)}
+            >
+              {t(group.label)}
+            </button>
+          ))}
+        </div>
+        <div className="kind-pick is-primary">
+          {activeGroup.kinds.map((k) => {
             const it = KIND_INFO[k];
+            const disabled = !!it.unsupported;
             return (
               <button
                 key={k}
                 type="button"
-                className={"kind-card" + (d.kind === k ? " is-active" : "")}
+                disabled={disabled}
+                title={disabled ? t("form.unsupported") : undefined}
+                className={
+                  "kind-card" + (d.kind === k ? " is-active" : "") + (disabled ? " is-disabled" : "")
+                }
                 onClick={() => switchKind(k)}
               >
                 <span className="kind-icon" style={{ background: it.accent }}>
                   {it.icon}
                 </span>
                 <span className="kind-text">
-                  <b>{t(it.name)}</b>
+                  <b>
+                    {t(it.name)}
+                    {disabled ? <span className="kind-badge">{t("form.unsupported")}</span> : null}
+                  </b>
                   <i>{t(it.desc)}</i>
                 </span>
               </button>

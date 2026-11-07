@@ -14,6 +14,10 @@
 //! 管控面接口**只支持 AK/SK 签名鉴权**，方舟的 API Key 走不通；
 //! 签名与服务端一致的部分是「派生密钥链用原始二进制摘要」，而非十六进制串。
 //! 默认项目按量推理用量来自 GetInferenceUsage；费用独立来自费用中心已出账账单。
+//! 账单查询口径与费用中心「账单详情 - 账单明细」一致：统计项=实例、按天，
+//! 不按计费模式 / 账单类型预筛，按产品前缀匹配方舟相关产品后汇总应付金额。
+//! 当天费用会额外用 `ExpenseDate=当天` 单独查询一次并优先采用；
+//! 仍无当天账单行时保持未知（前端显示「—」），不能当成 0 元。
 //!
 //! 站点地址只用来推导签名地域（`https://ark.<region>.volcengineapi.com`），
 //! 不带地域时按 `cn-beijing` 处理。
@@ -528,6 +532,23 @@ const BILL_DETAIL_REGION: &str = "cn-north-1";
 const BILL_PAGE_SIZE: usize = 300;
 const BILL_MAX_PAGES: usize = 100;
 const UNKNOWN: f64 = -1.0;
+/// 方舟按量消费在账单里的产品名（控制台「账单详情 - 产品」筛选项）。
+/// 模型推理不一定记在「火山方舟」下：开源模型记「开源LLM模型」，
+/// 豆包大模型、向量模型各有独立产品名，平台服务费等子项以「火山方舟」前缀出现。
+/// 账单里同一产品可能带后缀（如「开源LLM模型-xxx」），因此按前缀匹配。
+const ARK_PRODUCT_PREFIXES: &[&str] = &[
+    "火山方舟",
+    "开源LLM模型",
+    "字节跳动大模型服务",
+    "BGE语义向量模型服务",
+];
+
+fn is_ark_product(product: &str) -> bool {
+    let product = product.trim();
+    ARK_PRODUCT_PREFIXES
+        .iter()
+        .any(|prefix| product.starts_with(prefix))
+}
 
 struct UsageRange {
     start: String,
@@ -659,6 +680,8 @@ fn parse_inference(v: &Value, range: &UsageRange) -> Result<InferenceUsage, Stri
 #[derive(Default)]
 struct BillUsage {
     days: BTreeMap<String, f64>,
+    /// 按账单 `ConfigName`（配置名称，通常是模型名）汇总的已出账金额。
+    models: BTreeMap<String, f64>,
     seen: std::collections::BTreeSet<String>,
     pages: std::collections::BTreeSet<String>,
     currency: Option<String>,
@@ -667,10 +690,26 @@ struct BillUsage {
     readable: bool,
 }
 
-fn bill_body(period: &str, offset: usize) -> Value {
-    json!({"BillPeriod":period,"Limit":BILL_PAGE_SIZE,"Offset":offset,"NeedRecordNum":1,
-        "IgnoreZero":0,"GroupTerm":0,"GroupPeriod":1,"BillingMode":["2"],
-        "BillCategory":["consume-use"]})
+/// 账单 `ConfigName` 与推理 `ModelName` 的大小写、分隔符可能不同，归一化后再匹配。
+fn model_key(name: &str) -> String {
+    name.to_lowercase()
+        .chars()
+        .filter(|c| !c.is_whitespace() && !matches!(c, '-' | '_' | '.'))
+        .collect()
+}
+
+/// 账单查询体；`expense_date` 用于按天查询（必须与账期同月）。
+///
+/// 参数与费用中心「账单详情 - 账单明细」一致：统计项 = 实例（`GroupTerm=1`）、
+/// 统计周期 = 按天（`GroupPeriod=1`），不按计费模式 / 账单类型预筛，
+/// 否则会漏掉控制台合计里的部分金额（应付金额对不上）。
+fn bill_body(period: &str, offset: usize, expense_date: Option<&str>) -> Value {
+    let mut body = json!({"BillPeriod":period,"Limit":BILL_PAGE_SIZE,"Offset":offset,"NeedRecordNum":1,
+        "IgnoreZero":0,"GroupTerm":1,"GroupPeriod":1});
+    if let Some(day) = expense_date {
+        body["ExpenseDate"] = json!(day);
+    }
+    body
 }
 
 fn parse_bill_page(
@@ -715,23 +754,7 @@ fn parse_bill_page(
             .and_then(Value::as_str)
             .filter(|s| !s.is_empty())
             .ok_or("账单缺失产品名称，无法筛选方舟")?;
-        if product != "火山方舟" {
-            continue;
-        }
-        let mode = Some(
-            row.get("BillingMode")
-                .and_then(Value::as_str)
-                .ok_or("方舟账单缺失计费模式")?,
-        );
-        if !matches!(mode, Some("2" | "按量计费")) {
-            continue;
-        }
-        let category = Some(
-            row.get("BillCategory")
-                .and_then(Value::as_str)
-                .ok_or("方舟账单缺失账单类型")?,
-        );
-        if !matches!(category, Some("consume-use" | "消费-使用")) {
+        if !is_ark_product(product) {
             continue;
         }
         let details = ["ConfigName", "Element", "Product"]
@@ -766,7 +789,9 @@ fn parse_bill_page(
         if usage.currency.as_deref().is_some_and(|c| c != currency) {
             return Err("账单存在混合币种，不能合计".to_string());
         }
-        let amount = finite_number(row.get("PayableAmount"), true)?;
+        // 与控制台账单明细一致：不按计费模式 / 账单类型预筛，退款、调账等行
+        // 按应付金额原值计入（可能为负），保证每日合计与控制台「合计应付金额」一致。
+        let amount = finite_number(row.get("PayableAmount"), false)?;
         let key = row
             .get("BillDetailId")
             .and_then(Value::as_str)
@@ -782,12 +807,31 @@ fn parse_bill_page(
         if !cost.is_finite() {
             return Err("账单合计超出有效范围".to_string());
         }
+        // 配置名称在方舟账单里就是模型名（如 `DeepSeek-V4.1-flash`），
+        // 用它把已出账金额归集到模型，供详情页模型表展示每模型费用。
+        if let Some(model) = row
+            .get("ConfigName")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            let model_cost = usage.models.entry(model.to_string()).or_default();
+            *model_cost += amount;
+            if !model_cost.is_finite() {
+                return Err("模型账单合计超出有效范围".to_string());
+            }
+        }
     }
     usage.readable = true;
     Ok(offset + rows.len() == total)
 }
 
-async fn fetch_bills(http: &Http, creds: &Creds<'_>, period: &str) -> (BillUsage, Option<String>) {
+async fn fetch_bills(
+    http: &Http,
+    creds: &Creds<'_>,
+    period: &str,
+    expense_date: Option<&str>,
+) -> (BillUsage, Option<String>) {
     let billing_creds = Creds {
         ak: creds.ak,
         sk: creds.sk,
@@ -806,7 +850,7 @@ async fn fetch_bills(http: &Http, creds: &Creds<'_>, period: &str) -> (BillUsage
             "billing",
             "ListBillDetail",
             BILLING_VERSION,
-            Some(&bill_body(period, offset)),
+            Some(&bill_body(period, offset, expense_date)),
         )
         .await;
         let value = match result {
@@ -834,6 +878,7 @@ fn apply_payg(
     snap: &mut UsageSnapshot,
     inference: Option<InferenceUsage>,
     bills: &BillUsage,
+    today_bills: &BillUsage,
     range: &UsageRange,
 ) {
     let inference_ok = inference.is_some();
@@ -853,8 +898,26 @@ fn apply_payg(
         }
         date += chrono::Duration::days(1);
     }
+    // 今日费用优先取 `ExpenseDate=当天` 的单独查询：它与控制台账单详情同口径，
+    // 更新更及时；月度按日聚合可能滞后（当天只出了部分金额），只在当天查询
+    // 不可用时才用它兜底。
+    let today_cost = if today_bills.complete {
+        today_bills.days.get(&range.today).copied()
+    } else if bills.complete {
+        bills.days.get(&range.today).copied()
+    } else {
+        None
+    };
     let month_cost = if bills.complete {
-        bills.days.values().sum()
+        let mut total: f64 = bills.days.values().sum();
+        // 月度日聚合里的当天金额可能滞后，用当天查询的最新值替换。
+        if today_bills.complete {
+            if let Some(fresh) = today_bills.days.get(&range.today) {
+                total -= bills.days.get(&range.today).copied().unwrap_or(0.0);
+                total += fresh;
+            }
+        }
+        total
     } else {
         UNKNOWN
     };
@@ -868,11 +931,7 @@ fn apply_payg(
     let mut today = PeriodUsage {
         requests: if inference_ok { 0.0 } else { UNKNOWN },
         tokens: if inference_ok { 0.0 } else { UNKNOWN },
-        cost: if bills.complete {
-            *bills.days.get(&range.today).unwrap_or(&0.0)
-        } else {
-            UNKNOWN
-        },
+        cost: today_cost.unwrap_or(UNKNOWN),
         from: range.today.clone(),
         to: range.today.clone(),
     };
@@ -901,7 +960,56 @@ fn apply_payg(
     if bills.complete {
         for day in usage.days.values_mut() {
             if day.date >= range.month {
-                day.cost = *bills.days.get(&day.date).unwrap_or(&0.0);
+                // 当天没有账单行说明尚未出账，保持未知；历史日期无行按 0 处理。
+                day.cost = if day.date == range.today {
+                    today_cost.unwrap_or(UNKNOWN)
+                } else {
+                    *bills.days.get(&day.date).unwrap_or(&0.0)
+                };
+            }
+        }
+    } else if let Some(cost) = today_cost {
+        // 月度账单分页未完成时，单独的当天查询仍可给今日费用兜底。
+        usage
+            .days
+            .entry(range.today.clone())
+            .or_insert(DailyUsage {
+                date: range.today.clone(),
+                requests: if inference_ok { 0.0 } else { UNKNOWN },
+                tokens: if inference_ok { 0.0 } else { UNKNOWN },
+                cost: UNKNOWN,
+            })
+            .cost = cost;
+    }
+    // 已出账账单按 ConfigName 归集到模型；推理接口的 ModelName 与账单
+    // ConfigName 大小写 / 分隔符可能不同，归一化后再匹配。分页不完整时
+    // 保留未知，不能拿部分账单冒充完整模型费用。
+    if bills.complete {
+        let billed: BTreeMap<String, f64> = bills
+            .models
+            .iter()
+            .map(|(name, cost)| (model_key(name), *cost))
+            .collect();
+        for model in usage.models.values_mut() {
+            if let Some(cost) = billed.get(&model_key(&model.model)) {
+                model.cost = *cost;
+            }
+        }
+        let known: std::collections::BTreeSet<String> =
+            usage.models.keys().map(|name| model_key(name)).collect();
+        for (name, cost) in &bills.models {
+            if !known.contains(&model_key(name)) {
+                // 账单有费用、推理接口没返回同名模型的，补一行未知用量，
+                // 只保证费用可见，不把 Token / 请求数猜成 0。
+                usage.models.insert(
+                    name.clone(),
+                    ModelUsage {
+                        model: name.clone(),
+                        requests: UNKNOWN,
+                        tokens: UNKNOWN,
+                        cost: *cost,
+                    },
+                );
             }
         }
     }
@@ -919,9 +1027,22 @@ fn apply_payg(
     }
     if bills.complete {
         snap.metrics.push(Metric {
-            label: "当月按量已出账应付金额".to_string(),
+            label: "当月已出账应付金额".to_string(),
             value: month_cost.to_string(),
-            hint: Some("账户级火山方舟账单；非 default 项目专属；非实时且可能延迟".to_string()),
+            hint: Some(
+                "账户级火山方舟账单（含开源LLM模型 / 豆包大模型 / 平台服务费等产品）；非 default 项目专属；非实时且可能延迟"
+                    .to_string(),
+            ),
+        });
+    }
+    if let Some(cost) = today_cost {
+        snap.metrics.push(Metric {
+            label: "今日已出账金额".to_string(),
+            value: cost.to_string(),
+            hint: Some(
+                "与控制台账单明细同口径（统计项=实例、按天、ExpenseDate=当天）；当天仍在滚动出账，非最终值"
+                    .to_string(),
+            ),
         });
     }
     if let Some(currency) = &bills.currency {
@@ -934,7 +1055,7 @@ fn apply_payg(
             hint: Some("分页不完整，不作为当月完整消费；费用单位见定价币种".to_string()),
         });
     }
-    snap.metrics.push(Metric { label: "按量数据口径".to_string(), value: "推理用量与账单双源".to_string(), hint: Some("Token/请求：北京时间 default 项目正常后付费推理；费用：账户火山方舟当月按量消费已出账应付金额（非实时，存在延迟），两者范围不同；不包含 Coding/Agent 套餐。不关联模型费用。账单按天、计费项聚合，以明细 ID 去重汇总 PayableAmount，不按结算类型筛除；官方未说明结算类型间的重复关系，金额口径仍需真实账单核对。负数为未知标记，不代表真实零。".to_string()) });
+    snap.metrics.push(Metric { label: "按量数据口径".to_string(), value: "推理用量与账单双源".to_string(), hint: Some("Token/请求：北京时间 default 项目正常后付费推理；费用：账户火山方舟当月已出账应付金额（含开源LLM模型 / 豆包大模型 / 平台服务费等产品，非实时，存在延迟），两者范围不同；不包含 Coding/Agent 套餐。模型费用按账单 ConfigName 归集，与推理 ModelName 归一化后匹配，未匹配到的账单行以未知 Token 单独列出。账单按天、实例聚合（与控制台账单明细同口径），以明细 ID 去重汇总 PayableAmount，不按结算类型筛除；官方未说明结算类型间的重复关系，金额口径仍需真实账单核对。退款 / 抵扣行按应付金额原值计入（可能为负）；用量字段的 -1 为未知标记，不代表真实零。".to_string()) });
     snap.month = Some(month);
     snap.today = Some(today);
     snap.days = usage.days.into_values().collect();
@@ -1011,7 +1132,7 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
                 None
             }
         };
-        let (bills, bill_error) = fetch_bills(http, &creds, &range.month[..7]).await;
+        let (bills, bill_error) = fetch_bills(http, &creds, &range.month[..7], None).await;
         if let Some(error) = bill_error {
             snap.metrics.push(Metric {
                 label: "按量费用读取提示".to_string(),
@@ -1019,8 +1140,19 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
                 hint: Some(error),
             });
         }
-        payg_ok = inference.is_some() || bills.readable;
-        apply_payg(&mut snap, inference, &bills, &range);
+        // 单独按当天查询一次，验证当天是否已有已结算的小时账单；
+        // 拿不到时今日费用保持未知，由前端显示「—」。
+        let (today_bills, today_error) =
+            fetch_bills(http, &creds, &range.month[..7], Some(&range.today)).await;
+        if let Some(error) = today_error {
+            snap.metrics.push(Metric {
+                label: "今日费用读取提示".to_string(),
+                value: "今日费用未知".to_string(),
+                hint: Some(error),
+            });
+        }
+        payg_ok = inference.is_some() || bills.readable || today_bills.readable;
+        apply_payg(&mut snap, inference, &bills, &today_bills, &range);
 
         // 1) 账户余额（费用中心，跨产品通用）
         match call(
@@ -1236,7 +1368,13 @@ mod tests {
         assert_eq!(usage.input, 500.0);
         assert_eq!(usage.output, 70.0);
         let mut snap = snapshot();
-        apply_payg(&mut snap, Some(usage), &BillUsage::default(), &range());
+        apply_payg(
+            &mut snap,
+            Some(usage),
+            &BillUsage::default(),
+            &BillUsage::default(),
+            &range(),
+        );
         assert_eq!(snap.month.as_ref().unwrap().tokens, 570.0);
         assert_eq!(snap.today.as_ref().unwrap().requests, 5.0);
         assert_eq!(snap.month.as_ref().unwrap().from, "2026-10-01");
@@ -1288,7 +1426,13 @@ mod tests {
     fn empty_inference_is_valid_zero_not_failure() {
         let usage = parse_inference(&inference(json!([])), &range()).unwrap();
         let mut snap = snapshot();
-        apply_payg(&mut snap, Some(usage), &BillUsage::default(), &range());
+        apply_payg(
+            &mut snap,
+            Some(usage),
+            &BillUsage::default(),
+            &BillUsage::default(),
+            &range(),
+        );
         assert!(snap.supports_usage_api);
         assert!(snap.tokens_total.is_none());
         assert_eq!(snap.month.as_ref().unwrap().tokens, 0.0);
@@ -1318,8 +1462,17 @@ mod tests {
             usage_range(chrono::NaiveDate::from_ymd_opt(2026, 10, 31).unwrap()).start,
             "2026-10-01"
         );
-        assert_eq!(bill_body("2026-10", 300)["Offset"], 300);
-        assert_eq!(bill_body("2026-10", 0)["BillingMode"], json!(["2"]));
+        assert_eq!(bill_body("2026-10", 300, None)["Offset"], 300);
+        // 与控制台账单明细一致：统计项=实例、按天，不预筛计费模式 / 账单类型。
+        assert_eq!(bill_body("2026-10", 0, None)["GroupTerm"], 1);
+        assert_eq!(bill_body("2026-10", 0, None)["GroupPeriod"], 1);
+        assert!(bill_body("2026-10", 0, None).get("BillingMode").is_none());
+        assert!(bill_body("2026-10", 0, None).get("BillCategory").is_none());
+        assert!(bill_body("2026-10", 0, None).get("ExpenseDate").is_none());
+        assert_eq!(
+            bill_body("2026-10", 0, Some("2026-10-09"))["ExpenseDate"],
+            "2026-10-09"
+        );
         assert_eq!(BILL_DETAIL_REGION, "cn-north-1");
     }
 
@@ -1329,6 +1482,7 @@ mod tests {
         other["ProductZh"] = json!("云服务器");
         let mut prepaid = bill();
         prepaid["BillingMode"] = json!("1");
+        prepaid["BillDetailId"] = json!("prepaid-detail");
         let mut coding = bill();
         coding["ConfigName"] = json!("Coding Plan");
         let mut agent = bill();
@@ -1339,10 +1493,20 @@ mod tests {
         let mut settlement = bill();
         settlement["SettlementType"] = json!("结算");
         settlement["BillDetailId"] = json!("settlement-detail");
-        let rows = vec![other, prepaid, coding, agent, agent_model, settlement, bill(), bill()];
+        let rows = vec![
+            other,
+            prepaid,
+            coding,
+            agent,
+            agent_model,
+            settlement,
+            bill(),
+            bill(),
+        ];
         let mut usage = BillUsage::default();
         assert!(parse_bill_page(&page(rows, 8, 0), "2026-10", 0, &mut usage).unwrap());
-        assert_eq!(usage.days["2026-10-09"], 7.5);
+        // 不预筛计费模式：包年包月行也应计入，才能与控制台账单明细合计一致。
+        assert_eq!(usage.days["2026-10-09"], 10.0);
         let mut settlement_only = bill();
         settlement_only["SettlementType"] = json!("settle");
         assert!(parse_bill_page(
@@ -1355,16 +1519,109 @@ mod tests {
     }
 
     #[test]
+    fn ark_products_cover_open_source_models_and_exclude_other_cloud() {
+        for product in [
+            "火山方舟",
+            "开源LLM模型",
+            "字节跳动大模型服务（豆包大模型）",
+            "BGE语义向量模型服务",
+            "火山方舟-平台服务费",
+        ] {
+            assert!(is_ark_product(product), "{product} 应纳入方舟账单");
+        }
+        for product in ["云服务器", "对象存储", "内容分发网络"] {
+            assert!(!is_ark_product(product), "{product} 不应纳入方舟账单");
+        }
+    }
+
+    #[test]
+    fn bill_config_name_costs_match_inference_models() {
+        let mut open = bill();
+        open["ProductZh"] = json!("开源LLM模型");
+        open["ConfigName"] = json!("DeepSeek-V4.1-flash");
+        open["BillDetailId"] = json!("model-a");
+        let mut open_again = open.clone();
+        open_again["BillDetailId"] = json!("model-b");
+        let mut bill_only = bill();
+        bill_only["ProductZh"] = json!("开源LLM模型");
+        bill_only["ConfigName"] = json!("BGE-M3");
+        bill_only["BillDetailId"] = json!("model-c");
+
+        let mut usage = BillUsage::default();
+        assert!(parse_bill_page(
+            &page(vec![open, open_again, bill_only], 3, 0),
+            "2026-10",
+            0,
+            &mut usage
+        )
+        .unwrap());
+        assert_eq!(usage.days["2026-10-09"], 7.5);
+        assert_eq!(usage.models["DeepSeek-V4.1-flash"], 5.0);
+        assert_eq!(usage.models["BGE-M3"], 2.5);
+
+        usage.complete = true;
+        let inference = parse_inference(
+            &inference(json!([["deepseek-v4.1-flash", 20, "2026-10-09", 2, 100]])),
+            &range(),
+        )
+        .unwrap();
+        let mut snap = snapshot();
+        apply_payg(
+            &mut snap,
+            Some(inference),
+            &usage,
+            &BillUsage::default(),
+            &range(),
+        );
+        let flash = snap
+            .models
+            .iter()
+            .find(|m| m.model == "deepseek-v4.1-flash")
+            .unwrap();
+        assert_eq!(flash.cost, 5.0);
+        assert_eq!(flash.tokens, 120.0);
+        let bge = snap.models.iter().find(|m| m.model == "BGE-M3").unwrap();
+        assert_eq!(bge.cost, 2.5);
+        assert_eq!(bge.tokens, UNKNOWN);
+    }
+
+    #[test]
+    fn incomplete_bills_leave_model_cost_unknown() {
+        let usage = BillUsage {
+            models: BTreeMap::from([("DeepSeek-V4.1-flash".to_string(), 2.5)]),
+            readable: true,
+            ..Default::default()
+        };
+        let mut snap = snapshot();
+        apply_payg(&mut snap, None, &usage, &BillUsage::default(), &range());
+        assert!(snap.models.is_empty());
+    }
+
+    #[test]
     fn bills_keep_settlement_variants_and_only_deduplicate_detail_ids() {
         let mut rows = Vec::new();
-        for (i, settlement) in ["settle", "quota-settle", "non-settle", "结算", "Quota结算", "非结算", "unknown"].iter().enumerate() {
+        for (i, settlement) in [
+            "settle",
+            "quota-settle",
+            "non-settle",
+            "结算",
+            "Quota结算",
+            "非结算",
+            "unknown",
+        ]
+        .iter()
+        .enumerate()
+        {
             let mut row = bill();
             row["BillDetailId"] = json!(format!("demo-detail-{i}"));
             row["SettlementType"] = json!(settlement);
             rows.push(row);
         }
         let mut no_settlement = bill();
-        no_settlement.as_object_mut().unwrap().remove("SettlementType");
+        no_settlement
+            .as_object_mut()
+            .unwrap()
+            .remove("SettlementType");
         rows.push(no_settlement.clone());
         no_settlement["SettlementType"] = json!("settle");
         rows.push(no_settlement);
@@ -1373,9 +1630,12 @@ mod tests {
         assert_eq!(usage.days["2026-10-09"], 20.0);
         usage.complete = true;
         let mut snap = snapshot();
-        apply_payg(&mut snap, None, &usage, &range());
+        apply_payg(&mut snap, None, &usage, &BillUsage::default(), &range());
         assert_eq!(snap.month.as_ref().unwrap().cost, 20.0);
-        assert!(snap.metrics.iter().any(|m| m.hint.as_deref().is_some_and(|hint| hint.contains("官方未说明"))));
+        assert!(snap.metrics.iter().any(|m| m
+            .hint
+            .as_deref()
+            .is_some_and(|hint| hint.contains("官方未说明"))));
     }
 
     #[test]
@@ -1385,8 +1645,6 @@ mod tests {
             "PayableAmount",
             "ExpenseDate",
             "ProductZh",
-            "BillingMode",
-            "BillCategory",
             "BillDetailId",
         ] {
             let mut row = bill();
@@ -1417,6 +1675,20 @@ mod tests {
     }
 
     #[test]
+    fn bills_keep_signed_refund_amounts() {
+        // 退款 / 抵扣行按应付金额原值计入，保证每日合计与控制台账单明细一致。
+        let mut refund = bill();
+        refund["BillCategory"] = json!("refund-terminate");
+        refund["PayableAmount"] = json!(-2.5);
+        refund["BillDetailId"] = json!("refund-detail");
+        let mut usage = BillUsage::default();
+        assert!(
+            parse_bill_page(&page(vec![bill(), refund], 2, 0), "2026-10", 0, &mut usage).unwrap()
+        );
+        assert_eq!(usage.days["2026-10-09"], 0.0);
+    }
+
+    #[test]
     fn bills_incomplete_repeated_and_empty_pages() {
         let mut usage = BillUsage::default();
         assert!(parse_bill_page(&page(vec![bill()], 2, 0), "2026-10", 0, &mut usage).is_err());
@@ -1426,7 +1698,7 @@ mod tests {
         assert!(parse_bill_page(&page(rows, 600, 300), "2026-10", 300, &mut usage).is_err());
         assert!(parse_bill_page(&page(vec![], 600, 300), "2026-10", 300, &mut usage).is_err());
         let mut snap = snapshot();
-        apply_payg(&mut snap, None, &usage, &range());
+        apply_payg(&mut snap, None, &usage, &BillUsage::default(), &range());
         assert_eq!(snap.month.as_ref().unwrap().cost, UNKNOWN);
         assert!(snap.used.is_none());
         assert!(snap.metrics.iter().any(|m| m.label == "已读取部分账单费用"));
@@ -1460,7 +1732,13 @@ mod tests {
                     readable: bills_ok,
                     ..Default::default()
                 };
-                apply_payg(&mut snap, inference, &bills, &range());
+                apply_payg(
+                    &mut snap,
+                    inference,
+                    &bills,
+                    &BillUsage::default(),
+                    &range(),
+                );
                 assert_eq!(snap.supports_usage_api, inference_ok);
                 assert_eq!(
                     snap.month.as_ref().unwrap().tokens,
@@ -1473,12 +1751,104 @@ mod tests {
                 assert!(snap.used.is_none());
                 assert!(snap.tokens_total.is_none());
                 assert!(snap.requests_total.is_none());
-                assert_eq!(snap.today.as_ref().unwrap().requests, if inference_ok { 2.0 } else { UNKNOWN });
-                assert_eq!(snap.today.as_ref().unwrap().cost, if bills_ok { 2.5 } else { UNKNOWN });
-                assert_eq!(snap.metrics.iter().any(|m| m.label == "当月按量已出账应付金额"), bills_ok);
+                assert_eq!(
+                    snap.today.as_ref().unwrap().requests,
+                    if inference_ok { 2.0 } else { UNKNOWN }
+                );
+                assert_eq!(
+                    snap.today.as_ref().unwrap().cost,
+                    if bills_ok { 2.5 } else { UNKNOWN }
+                );
+                assert_eq!(
+                    snap.metrics.iter().any(|m| m.label == "当月已出账应付金额"),
+                    bills_ok
+                );
                 assert!(snap.models.iter().all(|m| m.cost == UNKNOWN));
             }
         }
+    }
+
+    #[test]
+    fn today_cost_uses_expense_date_query_and_stays_unknown_without_rows() {
+        // 月度账单只有历史日期时，当天费用由 ExpenseDate=当天 的单独查询兜底。
+        let bills = BillUsage {
+            days: BTreeMap::from([("2026-10-08".to_string(), 4.0)]),
+            complete: true,
+            readable: true,
+            ..Default::default()
+        };
+        let today_bills = BillUsage {
+            days: BTreeMap::from([("2026-10-09".to_string(), 1.5)]),
+            complete: true,
+            readable: true,
+            ..Default::default()
+        };
+        let mut snap = snapshot();
+        apply_payg(&mut snap, None, &bills, &today_bills, &range());
+        assert_eq!(snap.today.as_ref().unwrap().cost, 1.5);
+        // 月度合计用当天查询的最新值替换日聚合里的当天值：4.0 + 1.5。
+        assert_eq!(snap.month.as_ref().unwrap().cost, 5.5);
+        assert_eq!(
+            snap.days
+                .iter()
+                .find(|d| d.date == "2026-10-09")
+                .unwrap()
+                .cost,
+            1.5
+        );
+        assert!(snap.metrics.iter().any(|m| m.label == "今日已出账金额"));
+
+        // 两个查询都没有当天账单行时，今日费用保持未知而不是 0。
+        let empty = BillUsage {
+            complete: true,
+            readable: true,
+            ..Default::default()
+        };
+        let mut snap = snapshot();
+        apply_payg(&mut snap, None, &empty, &empty, &range());
+        assert_eq!(snap.today.as_ref().unwrap().cost, UNKNOWN);
+        assert_eq!(
+            snap.days
+                .iter()
+                .find(|d| d.date == "2026-10-09")
+                .unwrap()
+                .cost,
+            UNKNOWN
+        );
+        assert!(snap.metrics.iter().all(|m| m.label != "今日已出账金额"));
+    }
+
+    #[test]
+    fn today_cost_prefers_expense_date_query_over_stale_month_aggregate() {
+        // 月度按日聚合可能滞后：当天只出了 0.16，按 ExpenseDate 单独查询已是最新 0.31。
+        let bills = BillUsage {
+            days: BTreeMap::from([
+                ("2026-10-08".to_string(), 4.0),
+                ("2026-10-09".to_string(), 0.16),
+            ]),
+            complete: true,
+            readable: true,
+            ..Default::default()
+        };
+        let today_bills = BillUsage {
+            days: BTreeMap::from([("2026-10-09".to_string(), 0.31)]),
+            complete: true,
+            readable: true,
+            ..Default::default()
+        };
+        let mut snap = snapshot();
+        apply_payg(&mut snap, None, &bills, &today_bills, &range());
+        assert_eq!(snap.today.as_ref().unwrap().cost, 0.31);
+        // 月度合计用最新当天值替换滞后值：4.0 + 0.31。
+        assert!((snap.month.as_ref().unwrap().cost - 4.31).abs() < 1e-9);
+        assert_eq!(
+            snap.days
+                .iter()
+                .find(|d| d.date == "2026-10-09")
+                .unwrap()
+                .cost,
+            0.31
+        );
     }
 }
 

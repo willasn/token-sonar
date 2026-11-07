@@ -63,7 +63,9 @@ fn credentials(cfg: &ProviderConfig) -> Result<(String, String), String> {
     let ak = cfg.access_key_id.as_deref().unwrap_or_default().trim();
     let sk = cfg.access_key_secret.as_deref().unwrap_or_default().trim();
     if ak.is_empty() || sk.is_empty() {
-        return Err("请填写华为云 Access Key ID（AK）与 Secret Access Key（SK），不是盘古 API Key".into());
+        return Err(
+            "请填写华为云 Access Key ID（AK）与 Secret Access Key（SK），不是盘古 API Key".into(),
+        );
     }
     Ok((ak.to_string(), sk.to_string()))
 }

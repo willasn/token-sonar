@@ -628,15 +628,23 @@ export function Providers() {
   const toolbar = (
     <div className="plist-toolbar">
       <div className="filters">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            className={"filter-pill" + (state.filter === f.key ? " is-active" : "")}
-            onClick={() => setFilter(f.key)}
-          >
-            {t(f.label)}
-          </button>
-        ))}
+        {FILTERS.map((f) => {
+          const disabled = KIND_FILTERS.indexOf(f.key as ProviderKind) >= 0 && !!kindInfo(f.key).unsupported;
+          return (
+            <button
+              key={f.key}
+              disabled={disabled}
+              className={
+                "filter-pill" +
+                (state.filter === f.key ? " is-active" : "") +
+                (disabled ? " is-disabled" : "")
+              }
+              onClick={() => setFilter(f.key)}
+            >
+              {t(f.label)}
+            </button>
+          );
+        })}
       </div>
       <div className="plist-tools">
         <span className="count">{t("providers.count", { a: rows.length, b: state.providers.length })}</span>

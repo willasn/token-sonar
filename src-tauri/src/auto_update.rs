@@ -1,11 +1,12 @@
 //! 应用内自动更新：在 Rust 侧并行探测多个更新源。
 //!
 //! `tauri.conf.json` 的 `plugins.updater.endpoints` 同时配置 Cloudflare R2 镜像与
-//! GitHub Release。`tauri-plugin-updater` 默认按顺序逐个尝试，这里改为：
+//! GitHub Release。这里不要求两个源都可用：
 //!
-//! 1. 并行请求每个源的 `latest.json`（单源超时 5 秒），只保留可用源；
-//! 2. 按版本号降序排列，优先使用版本更高的源；
-//! 3. 安装失败（签名不匹配 / 文件损坏）时自动回退到下一个源。
+//! 1. 并行请求每个源的 `latest.json`，整体超时 [`CHECK_TIMEOUT`]；
+//! 2. 只要有任意一个源在超时内返回，就用它（多个源都返回时按版本号降序对比）；
+//! 3. 全部源超时 / 不可用时才报「网络超时」；
+//! 4. 安装失败（签名不匹配 / 文件损坏）时自动回退到下一个源。
 //!
 //! 更新检查与安装都放在 Rust 侧：前端不直接访问外部 origin，WebView 的 CSP 无需放宽。
 
@@ -16,11 +17,13 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Url};
 use tauri_plugin_updater::{Update, UpdaterExt};
+use tokio::task::JoinSet;
+use tokio::time::{timeout_at, Instant};
 
 /// 下载进度事件名，前端经 `listen` 订阅。
 pub const UPDATE_PROGRESS_EVENT: &str = "update:progress";
 
-/// 单个更新源的检查超时时间。
+/// 检查更新源的整体超时时间（不是单个源的串行累加）。
 const CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// 更新检查结果。`hasUpdate` 为 false 时其余字段均为 `None`。
@@ -81,29 +84,48 @@ async fn probe_endpoint(client: &reqwest::Client, url: &Url) -> Option<Version> 
 }
 
 /// 并行探测所有更新源的版本号，返回 `[(version, url)]` 列表（按版本降序）。
+///
+/// 整体超时 [`CHECK_TIMEOUT`]：任意一个源先返回就先收下，不等待其它源；
+/// 因此只有镜像可用、或只有 GitHub 可用时都能正常查到更新。
 async fn probe_endpoints_ordered(app: &AppHandle) -> Result<Vec<(Version, Url)>, String> {
     let client = reqwest::Client::builder()
         .timeout(CHECK_TIMEOUT)
         .build()
         .map_err(|e| format!("更新检查失败：{e}"))?;
 
-    let mut handles = Vec::new();
+    let mut tasks = JoinSet::new();
     for url in configured_endpoints(app) {
         let client = client.clone();
-        handles.push(tauri::async_runtime::spawn(async move {
+        tasks.spawn(async move {
             let version = probe_endpoint(&client, &url).await;
             (url, version)
-        }));
+        });
     }
 
+    let deadline = Instant::now() + CHECK_TIMEOUT;
     let mut candidates: Vec<(Version, Url)> = Vec::new();
-    for handle in handles {
-        if let Ok((url, Some(version))) = handle.await {
-            candidates.push((version, url));
+    loop {
+        match timeout_at(deadline, tasks.join_next()).await {
+            Ok(Some(Ok((url, Some(version))))) => candidates.push((version, url)),
+            // 该源不可用（超时 / 非 2xx / 解析失败），继续等其它源
+            Ok(Some(_)) => {}
+            // 所有源都已结束
+            Ok(None) => break,
+            // 整体超时：已有结果照常使用
+            Err(_) => break,
         }
     }
+    tasks.abort_all();
     candidates.sort_by(|a, b| b.0.cmp(&a.0));
     Ok(candidates)
+}
+
+/// 所有更新源在超时内都连不上时的统一提示。
+fn no_source_error() -> String {
+    format!(
+        "更新检查失败：网络超时，{} 秒内 R2 镜像与 GitHub 均无法连接",
+        CHECK_TIMEOUT.as_secs()
+    )
 }
 
 /// 用 `updater.check()` 获取指定 endpoint 的更新对象。
@@ -135,7 +157,7 @@ pub async fn auto_update_check(app: AppHandle) -> Result<UpdateInfo, String> {
     let candidates = probe_endpoints_ordered(&app).await?;
 
     if candidates.is_empty() {
-        return Err("更新检查失败：所有更新源均不可用".into());
+        return Err(no_source_error());
     }
 
     let mut last_check_err: Option<tauri_plugin_updater::Error> = None;
@@ -170,7 +192,7 @@ pub async fn auto_update_check(app: AppHandle) -> Result<UpdateInfo, String> {
 
     Err(last_check_err
         .map(update_error)
-        .unwrap_or_else(|| "更新检查失败：所有更新源均不可用".into()))
+        .unwrap_or_else(no_source_error))
 }
 
 /// 下载并安装更新，成功后重启应用。下载进度经 [`UPDATE_PROGRESS_EVENT`] 回传。
@@ -181,7 +203,7 @@ pub async fn auto_update_install(app: AppHandle) -> Result<(), String> {
     let candidates = probe_endpoints_ordered(&app).await?;
 
     if candidates.is_empty() {
-        return Err("更新检查失败：所有更新源均不可用".into());
+        return Err(no_source_error());
     }
 
     let mut last_install_err: Option<tauri_plugin_updater::Error> = None;

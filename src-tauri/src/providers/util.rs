@@ -29,10 +29,8 @@ pub fn to_f64(v: &Value) -> Option<f64> {
 /// 在对象中按候选键名取值（大小写不敏感，忽略下划线与连字符差异）。
 pub fn pick<'a>(obj: &'a Value, keys: &[&str]) -> Option<&'a Value> {
     let map = obj.as_object()?;
-    let normalized: Vec<(String, &Value)> = map
-        .iter()
-        .map(|(k, v)| (normalize_key(k), v))
-        .collect();
+    let normalized: Vec<(String, &Value)> =
+        map.iter().map(|(k, v)| (normalize_key(k), v)).collect();
     for key in keys {
         let target = normalize_key(key);
         if let Some((_, v)) = normalized.iter().find(|(k, _)| k == &target) {
@@ -96,11 +94,7 @@ pub fn find_usage_records(v: &Value) -> Vec<Value> {
     let mut best: Option<&Vec<Value>> = None;
     let mut best_score = 0usize;
     for arr in arrays {
-        let score = arr
-            .iter()
-            .take(20)
-            .filter(|r| is_usage_like(r))
-            .count();
+        let score = arr.iter().take(20).filter(|r| is_usage_like(r)).count();
         if score > 0 && score > best_score {
             best_score = score;
             best = Some(arr);
@@ -330,4 +324,3 @@ pub fn extract_json(text: &str) -> Result<Value, String> {
     }
     Err("模型输出里没有找到 JSON".to_string())
 }
-

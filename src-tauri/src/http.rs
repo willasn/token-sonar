@@ -47,7 +47,11 @@ impl Http {
     }
 
     /// 在基础头之上叠加自定义头（同名的会覆盖，例如平台接口要求的浏览器 UA）。
-    fn headers_with(bearer: Option<&str>, cookie: Option<&str>, extra: &[(&str, &str)]) -> HeaderMap {
+    fn headers_with(
+        bearer: Option<&str>,
+        cookie: Option<&str>,
+        extra: &[(&str, &str)],
+    ) -> HeaderMap {
         let mut map = Self::headers(bearer, cookie);
         for (k, v) in extra {
             if let Ok(name) = HeaderName::from_bytes(k.as_bytes()) {
@@ -114,10 +118,7 @@ impl Http {
 
     async fn parse(res: reqwest::Response) -> Result<Value, String> {
         let status = res.status();
-        let text = res
-            .text()
-            .await
-            .map_err(|e| format!("读取响应失败: {e}"))?;
+        let text = res.text().await.map_err(|e| format!("读取响应失败: {e}"))?;
 
         if !status.is_success() {
             let snippet: String = text.chars().take(160).collect();
@@ -159,10 +160,7 @@ impl Http {
             .await
             .map_err(|e| format!("请求失败: {}", shorten(&e.to_string())))?;
         let status = res.status().as_u16();
-        let text = res
-            .text()
-            .await
-            .map_err(|e| format!("读取响应失败: {e}"))?;
+        let text = res.text().await.map_err(|e| format!("读取响应失败: {e}"))?;
 
         match serde_json::from_str::<Value>(&text) {
             Ok(v) => Ok((status, v)),

@@ -875,9 +875,7 @@ pub async fn probe(cfg: &ProviderConfig, http: &Http) -> Result<String, String> 
                     .unwrap_or_else(|| "Token Plan 额度读取失败".into()))
             };
         }
-        BailianPlan::TokenPlanPersonal | BailianPlan::CodingPlan => {
-            return cli::probe(cfg).await
-        }
+        BailianPlan::TokenPlanPersonal | BailianPlan::CodingPlan => return cli::probe(cfg).await,
         BailianPlan::Billing => {}
     }
     let (ak, sk) = credentials(cfg)?;

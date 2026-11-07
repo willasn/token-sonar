@@ -48,6 +48,18 @@ pub enum ProviderKind {
     /// PPIO 派欧云（API Key 读取账户余额与 LLM 按日账单）
     #[serde(rename = "ppio")]
     Ppio,
+    /// OpenAI 官方（海外；仅校验 API Key，用量需在官方后台查看）
+    #[serde(rename = "openai")]
+    OpenAi,
+    /// Anthropic 官方（海外；仅校验 API Key，用量需在官方后台查看）
+    #[serde(rename = "anthropic")]
+    Anthropic,
+    /// Google Gemini 官方（海外；仅校验 API Key，用量需在官方后台查看）
+    #[serde(rename = "gemini")]
+    Gemini,
+    /// xAI 官方（海外；仅校验 API Key，用量需在官方后台查看）
+    #[serde(rename = "xai")]
+    Xai,
 }
 
 impl ProviderKind {
@@ -66,6 +78,10 @@ impl ProviderKind {
             ProviderKind::Stepfun => "stepfun",
             ProviderKind::Pangu => "pangu",
             ProviderKind::Ppio => "ppio",
+            ProviderKind::OpenAi => "openai",
+            ProviderKind::Anthropic => "anthropic",
+            ProviderKind::Gemini => "gemini",
+            ProviderKind::Xai => "xai",
         }
     }
 
@@ -90,6 +106,10 @@ impl ProviderKind {
             ProviderKind::Pangu => "https://bss.myhuaweicloud.com",
             // PPIO 管理 API 域名（余额 / 账单）；推理地址为 https://api.ppinfra.com/v3/openai
             ProviderKind::Ppio => "https://api.ppio.com",
+            ProviderKind::OpenAi => "https://api.openai.com",
+            ProviderKind::Anthropic => "https://api.anthropic.com",
+            ProviderKind::Gemini => "https://generativelanguage.googleapis.com",
+            ProviderKind::Xai => "https://api.x.ai",
         }
     }
 
@@ -108,9 +128,12 @@ impl ProviderKind {
             ProviderKind::Stepfun => "阶跃星辰 / StepFun",
             ProviderKind::Pangu => "盘古 / 华为云",
             ProviderKind::Ppio => "PPIO / 派欧云",
+            ProviderKind::OpenAi => "OpenAI",
+            ProviderKind::Anthropic => "Anthropic / Claude",
+            ProviderKind::Gemini => "Google / Gemini",
+            ProviderKind::Xai => "xAI / Grok",
         }
     }
-
 }
 
 impl Default for ProviderKind {
@@ -160,8 +183,6 @@ impl Default for AccessMode {
         AccessMode::Api
     }
 }
-
-
 
 /// 一条 API Key 记录。
 ///

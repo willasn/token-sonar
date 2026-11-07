@@ -13,7 +13,11 @@ export type ProviderKind =
   | "siliconflow"
   | "stepfun"
   | "pangu"
-  | "ppio";
+  | "ppio"
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "xai";
 export type AuthType = "token" | "password";
 export type AccessMode = "api" | "login";
 export type Currency = string;

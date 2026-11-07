@@ -34,7 +34,10 @@ fn quota_url(base: &str) -> String {
 
 /// 账户汇总接口（余额 / 累计充值 / 累计消费），同样只取 scheme + host。
 fn account_url(base: &str) -> String {
-    format!("{}/api/biz/account/query-customer-account-report", origin(base))
+    format!(
+        "{}/api/biz/account/query-customer-account-report",
+        origin(base)
+    )
 }
 
 fn origin(base: &str) -> String {
@@ -209,10 +212,7 @@ fn apply_quota(snap: &mut UsageSnapshot, v: &Value) -> bool {
     let mut found = false;
     for (idx, item) in items.iter().enumerate() {
         let usage = pick_f64(item, &["usage", "limit", "total"]);
-        let current = pick_f64(
-            item,
-            &["currentValue", "current_value", "current", "used"],
-        );
+        let current = pick_f64(item, &["currentValue", "current_value", "current", "used"]);
         let pct = percent(
             current,
             usage,

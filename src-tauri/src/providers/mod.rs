@@ -2,6 +2,7 @@ pub mod bailian;
 pub mod deepseek;
 pub mod glm;
 pub mod hunyuan;
+pub mod intl;
 pub mod kimi;
 pub mod mimo;
 pub mod minimax;
@@ -34,9 +35,22 @@ pub async fn fetch_snapshot(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot 
         ProviderKind::Stepfun => stepfun::fetch(cfg, http).await,
         ProviderKind::Pangu => pangu::fetch(cfg, http).await,
         ProviderKind::Ppio => ppio::fetch(cfg, http).await,
+        ProviderKind::OpenAi
+        | ProviderKind::Anthropic
+        | ProviderKind::Gemini
+        | ProviderKind::Xai => intl::fetch(cfg, http).await,
     };
-    if !matches!(cfg.kind, ProviderKind::Bailian | ProviderKind::Hunyuan) {
-        snap.days = crate::providers::newapi::fill_days(std::mem::take(&mut snap.days), WINDOW_DAYS);
+    if !matches!(
+        cfg.kind,
+        ProviderKind::Bailian
+            | ProviderKind::Hunyuan
+            | ProviderKind::OpenAi
+            | ProviderKind::Anthropic
+            | ProviderKind::Gemini
+            | ProviderKind::Xai
+    ) {
+        snap.days =
+            crate::providers::newapi::fill_days(std::mem::take(&mut snap.days), WINDOW_DAYS);
     }
     snap
 }
@@ -58,6 +72,10 @@ pub async fn probe(cfg: &ProviderConfig) -> Result<String, String> {
         ProviderKind::Stepfun => stepfun::probe(cfg, &http).await,
         ProviderKind::Pangu => pangu::probe(cfg, &http).await,
         ProviderKind::Ppio => ppio::probe(cfg, &http).await,
+        ProviderKind::OpenAi
+        | ProviderKind::Anthropic
+        | ProviderKind::Gemini
+        | ProviderKind::Xai => intl::probe(cfg, &http).await,
     }
 }
 

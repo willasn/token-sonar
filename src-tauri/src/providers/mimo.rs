@@ -80,7 +80,11 @@ fn rows(v: &Value) -> Vec<&Value> {
     let p = payload(v);
     p.as_array()
         .map(|a| a.iter().collect())
-        .or_else(|| p.get("list").and_then(|l| l.as_array()).map(|a| a.iter().collect()))
+        .or_else(|| {
+            p.get("list")
+                .and_then(|l| l.as_array())
+                .map(|a| a.iter().collect())
+        })
         .unwrap_or_default()
 }
 
@@ -98,7 +102,9 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
     snap.fetched_at = now_iso();
 
     if !matches!(cfg.mode(), AccessMode::Login) {
-        snap.error = Some("小米 MiMo 仅支持「登录获取」接入（官方 API Key 不提供余额 / 用量接口）".to_string());
+        snap.error = Some(
+            "小米 MiMo 仅支持「登录获取」接入（官方 API Key 不提供余额 / 用量接口）".to_string(),
+        );
         return snap;
     }
 
@@ -125,7 +131,9 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
             let d = payload(&v);
             snap.account = pick_string(
                 d,
-                &["email", "phone", "nickname", "nickName", "userName", "userId"],
+                &[
+                    "email", "phone", "nickname", "nickName", "userName", "userId",
+                ],
             );
             if let Some(idc) = pick_f64(d, &["idc"]) {
                 currency = if idc as i64 == 310 { "CNY" } else { "USD" }.to_string();
@@ -152,7 +160,12 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
     // 3) Token Plan 套餐
     let mut plan_detail = Value::Null;
     match http
-        .get_json_h(&console_url("/tokenPlan/detail"), None, Some(&cookie), &headers)
+        .get_json_h(
+            &console_url("/tokenPlan/detail"),
+            None,
+            Some(&cookie),
+            &headers,
+        )
         .await
     {
         Ok(v) if ensure_ok(&v).is_ok() => plan_detail = payload(&v).clone(),
@@ -161,7 +174,12 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
     }
     let mut plan_usage = Value::Null;
     match http
-        .get_json_h(&console_url("/tokenPlan/usage"), None, Some(&cookie), &headers)
+        .get_json_h(
+            &console_url("/tokenPlan/usage"),
+            None,
+            Some(&cookie),
+            &headers,
+        )
         .await
     {
         Ok(v) if ensure_ok(&v).is_ok() => plan_usage = payload(&v).clone(),
@@ -211,7 +229,12 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
 
     // 6) 月度账单（当月已出账口径）
     match http
-        .get_json_h(&console_url("/usage/bill/monthly"), None, Some(&cookie), &headers)
+        .get_json_h(
+            &console_url("/usage/bill/monthly"),
+            None,
+            Some(&cookie),
+            &headers,
+        )
         .await
     {
         Ok(v) if ensure_ok(&v).is_ok() => apply_monthly_bill(&mut snap, &v, (y1, m1), &currency),
@@ -255,7 +278,10 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
             value: format!("{} 个", snap.api_keys.len()),
             hint: Some(format!(
                 "其中 {} 个来自手动录入",
-                snap.api_keys.iter().filter(|k| k.source == "manual").count()
+                snap.api_keys
+                    .iter()
+                    .filter(|k| k.source == "manual")
+                    .count()
             )),
         });
     }
@@ -369,12 +395,22 @@ fn apply_plan(snap: &mut UsageSnapshot, detail: &Value, usage: &Value) {
         .or_else(|| usage.get("expired").and_then(|v| v.as_bool()));
     let period_end = pick_string(
         detail,
-        &["currentPeriodEnd", "current_period_end", "expireTime", "expire_time"],
+        &[
+            "currentPeriodEnd",
+            "current_period_end",
+            "expireTime",
+            "expire_time",
+        ],
     )
     .or_else(|| {
         pick_string(
             usage,
-            &["currentPeriodEnd", "current_period_end", "expireTime", "expire_time"],
+            &[
+                "currentPeriodEnd",
+                "current_period_end",
+                "expireTime",
+                "expire_time",
+            ],
         )
     });
 
@@ -418,8 +454,13 @@ fn apply_plan(snap: &mut UsageSnapshot, detail: &Value, usage: &Value) {
         let name = pick_string(&item, &["name"]).unwrap_or_else(|| "额度".to_string());
         let used = pick_f64(&item, &["used"]).unwrap_or(0.0);
         let limit = pick_f64(&item, &["limit", "quota", "total"]).unwrap_or(0.0);
-        let percent = pick_f64(&item, &["percent"])
-            .unwrap_or_else(|| if limit > 0.0 { used / limit * 100.0 } else { 0.0 });
+        let percent = pick_f64(&item, &["percent"]).unwrap_or_else(|| {
+            if limit > 0.0 {
+                used / limit * 100.0
+            } else {
+                0.0
+            }
+        });
         snap.quotas.push(QuotaWindow {
             label: format!("Token Plan · {}", plan_item_label(&name)),
             used,
@@ -675,7 +716,10 @@ fn month_key(v: &Value) -> Option<String> {
 
 fn apply_monthly_bill(snap: &mut UsageSnapshot, v: &Value, year_month: (i32, u32), currency: &str) {
     let key = format!("{:04}{:02}", year_month.0, year_month.1);
-    let Some(row) = rows(v).into_iter().find(|r| month_key(r).as_deref() == Some(&key)) else {
+    let Some(row) = rows(v)
+        .into_iter()
+        .find(|r| month_key(r).as_deref() == Some(&key))
+    else {
         return;
     };
     let cost = pick_f64(row, &["consumptionAmount", "consumption_amount"]).unwrap_or(0.0);
@@ -754,7 +798,14 @@ fn parse_keys(v: &Value) -> Vec<ApiKeyInfo> {
             let id = pick_string(r, &["id", "keyId", "key_id"]).unwrap_or_else(|| name.clone());
             let raw = pick_string(
                 r,
-                &["maskedKey", "masked_key", "key", "apiKey", "api_key", "prefix"],
+                &[
+                    "maskedKey",
+                    "masked_key",
+                    "key",
+                    "apiKey",
+                    "api_key",
+                    "prefix",
+                ],
             );
             Some(ApiKeyInfo {
                 id,

@@ -59,9 +59,12 @@ fn scaled(v: &Value, key: &str) -> f64 {
 
 async fn read_balance(cfg: &ProviderConfig, http: &Http) -> Result<Balance, String> {
     let key = read_key(cfg)?;
-    let v = http.get_json(&endpoint(cfg, BALANCE_PATH), Some(key), None).await?;
+    let v = http
+        .get_json(&endpoint(cfg, BALANCE_PATH), Some(key), None)
+        .await?;
     if pick_f64(&v, &["availableBalance"]).is_none() {
-        let msg = pick_string(&v, &["message", "msg", "error"]).unwrap_or_else(|| "未知错误".into());
+        let msg =
+            pick_string(&v, &["message", "msg", "error"]).unwrap_or_else(|| "未知错误".into());
         return Err(format!("PPIO 余额接口未返回 availableBalance：{msg}"));
     }
     Ok(Balance {
@@ -147,8 +150,13 @@ async fn read_bills(
 /// 账户额度（`credit_balance`）仅作补充展示，失败不影响主流程。
 async fn read_credit_balance(cfg: &ProviderConfig, http: &Http) -> Option<f64> {
     let key = read_key(cfg).ok()?;
-    let v = http.get_json(&endpoint(cfg, USER_PATH), Some(key), None).await.ok()?;
-    pick(&v, &["credit_balance"]).and_then(to_f64).map(|x| x / UNIT_SCALE)
+    let v = http
+        .get_json(&endpoint(cfg, USER_PATH), Some(key), None)
+        .await
+        .ok()?;
+    pick(&v, &["credit_balance"])
+        .and_then(to_f64)
+        .map(|x| x / UNIT_SCALE)
 }
 
 pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
@@ -192,7 +200,11 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
 
     match read_bills(cfg, http, crate::providers::WINDOW_DAYS).await {
         Ok((days, mut models)) => {
-            models.sort_by(|a, b| b.cost.partial_cmp(&a.cost).unwrap_or(std::cmp::Ordering::Equal));
+            models.sort_by(|a, b| {
+                b.cost
+                    .partial_cmp(&a.cost)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             let cost: f64 = days.iter().map(|d| d.cost).sum();
             let tokens: f64 = days.iter().map(|d| d.tokens).sum();
             let requests: f64 = days.iter().map(|d| d.requests).sum();

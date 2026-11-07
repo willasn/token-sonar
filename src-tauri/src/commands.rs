@@ -38,7 +38,10 @@ pub fn list_providers(store: State<AppStore>) -> Vec<ProviderConfig> {
 }
 
 #[tauri::command]
-pub fn save_provider(store: State<AppStore>, provider: ProviderConfig) -> Result<ProviderConfig, String> {
+pub fn save_provider(
+    store: State<AppStore>,
+    provider: ProviderConfig,
+) -> Result<ProviderConfig, String> {
     let mut p = provider;
     if p.id.trim().is_empty() {
         p.id = new_id("pv");
@@ -81,7 +84,9 @@ pub async fn test_provider(provider: ProviderConfig) -> Result<String, String> {
 pub async fn refresh_provider(app: AppHandle, id: String) -> Result<UsageSnapshot, String> {
     let cfg = {
         let store = app.state::<AppStore>();
-        store.get_provider(&id).ok_or_else(|| "未找到该账号".to_string())?
+        store
+            .get_provider(&id)
+            .ok_or_else(|| "未找到该账号".to_string())?
     };
 
     let http = Http::new()?;

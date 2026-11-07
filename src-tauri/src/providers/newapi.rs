@@ -139,7 +139,9 @@ fn hint_auth_error(msg: String) -> String {
         );
     }
     if lower.contains("invalid access token") {
-        return format!("{msg}（该凭证不是站点的「系统访问令牌」，请在站点「个人设置」页复制后重试）");
+        return format!(
+            "{msg}（该凭证不是站点的「系统访问令牌」，请在站点「个人设置」页复制后重试）"
+        );
     }
     msg
 }
@@ -159,7 +161,11 @@ fn uid_cache() -> &'static Mutex<HashMap<String, Option<String>>> {
 }
 
 fn cred_key(base: &str, s: &Session) -> String {
-    let cred = s.token.clone().filter(|t| !t.trim().is_empty()).unwrap_or_default();
+    let cred = s
+        .token
+        .clone()
+        .filter(|t| !t.trim().is_empty())
+        .unwrap_or_default();
     format!("{}|{}", base.trim_end_matches('/'), cred)
 }
 
@@ -190,7 +196,10 @@ async fn resolve_uid(http: &Http, base: &str, s: &Session) -> Option<String> {
     for id in 1..=UID_SCAN_MAX {
         let uid = id.to_string();
         let extra = vec![("New-Api-User", uid.as_str())];
-        if let Ok(v) = http.get_json_h(&url, s.token.as_deref(), None, &extra).await {
+        if let Ok(v) = http
+            .get_json_h(&url, s.token.as_deref(), None, &extra)
+            .await
+        {
             if ensure_ok(&v).is_ok() && pick_uid(&v).as_deref() == Some(uid.as_str()) {
                 found = Some(uid);
                 break;
@@ -206,7 +215,8 @@ async fn resolve_uid(http: &Http, base: &str, s: &Session) -> Option<String> {
 async fn fetch_self(http: &Http, base: &str, session: &mut Session) -> Result<Value, String> {
     let url = crate::http::join_url(base, "/api/user/self");
     async fn call(http: &Http, url: &str, s: &Session) -> Result<Value, String> {
-        http.get_json_h(url, s.token.as_deref(), None, &s.extra()).await
+        http.get_json_h(url, s.token.as_deref(), None, &s.extra())
+            .await
     }
 
     match call(http, &url, session).await {
@@ -278,7 +288,8 @@ async fn fetch_by_key(cfg: &ProviderConfig, http: &Http, days: usize) -> UsageSn
     // 「系统访问令牌」，因此控制台看板数据源也一并探测，失败不影响主流程）
     let start = unixtime_days_ago(days as i64);
     let end = now_ts();
-    let (rpm, tpm) = apply_dashboard(&mut snap, http, &base, bearer, &extra, rate, start, end).await;
+    let (rpm, tpm) =
+        apply_dashboard(&mut snap, http, &base, bearer, &extra, rate, start, end).await;
     let candidates = vec![
         format!("/api/usage/token?type=1&start_timestamp={start}&end_timestamp={end}"),
         format!("/api/usage/token?type=2&start_timestamp={start}&end_timestamp={end}"),
@@ -344,11 +355,17 @@ async fn apply_dashboard(
     );
     let today_tokens = pick_f64(
         &data,
-        &["today_tokens", "todayTokens", "today_token_used", "token_used"],
+        &[
+            "today_tokens",
+            "todayTokens",
+            "today_token_used",
+            "token_used",
+        ],
     )
     .or_else(|| {
         let p = pick_f64(&data, &["today_prompt_tokens", "todayPromptTokens"]).unwrap_or(0.0);
-        let c = pick_f64(&data, &["today_completion_tokens", "todayCompletionTokens"]).unwrap_or(0.0);
+        let c =
+            pick_f64(&data, &["today_completion_tokens", "todayCompletionTokens"]).unwrap_or(0.0);
         if p + c > 0.0 {
             Some(p + c)
         } else {
@@ -367,8 +384,14 @@ async fn apply_dashboard(
     });
 
     (
-        pick_f64(&data, &["avg_rpm", "avgRpm", "today_rpm", "todayRpm", "rpm"]),
-        pick_f64(&data, &["avg_tpm", "avgTpm", "today_tpm", "todayTpm", "tpm"]),
+        pick_f64(
+            &data,
+            &["avg_rpm", "avgRpm", "today_rpm", "todayRpm", "rpm"],
+        ),
+        pick_f64(
+            &data,
+            &["avg_tpm", "avgTpm", "today_tpm", "todayTpm", "tpm"],
+        ),
     )
 }
 
@@ -460,8 +483,8 @@ async fn money_settings(
                 per_unit = v;
             }
         }
-        if let Some(b) = pick(&status, &["display_in_currency", "displayInCurrency"])
-            .and_then(|v| v.as_bool())
+        if let Some(b) =
+            pick(&status, &["display_in_currency", "displayInCurrency"]).and_then(|v| v.as_bool())
         {
             in_currency = b;
         }
@@ -478,13 +501,17 @@ async fn money_settings(
             "CUSTOM" => {
                 factor = pick_f64(
                     &status,
-                    &["custom_currency_exchange_rate", "customCurrencyExchangeRate"],
+                    &[
+                        "custom_currency_exchange_rate",
+                        "customCurrencyExchangeRate",
+                    ],
                 )
                 .filter(|v| *v > 0.0)
                 .unwrap_or(1.0);
-                currency = pick_string(&status, &["custom_currency_symbol", "customCurrencySymbol"])
-                    .filter(|s| !s.trim().is_empty())
-                    .unwrap_or_else(|| "¤".to_string());
+                currency =
+                    pick_string(&status, &["custom_currency_symbol", "customCurrencySymbol"])
+                        .filter(|s| !s.trim().is_empty())
+                        .unwrap_or_else(|| "¤".to_string());
             }
             "USD" => currency = "USD".to_string(),
             // 站点直接展示原始积分，不做货币换算
@@ -645,14 +672,20 @@ async fn apply_records(
         if records.is_empty() {
             continue;
         }
-        let per_record_is_request = c.contains("/api/log/self?") || c.ends_with("/api/log/self/stat");
+        let per_record_is_request =
+            c.contains("/api/log/self?") || c.ends_with("/api/log/self/stat");
         apply_record_set(snap, &records, per_record_is_request, rate);
         break;
     }
 }
 
 /// 把一组用量记录归一化成日 / 模型维度并落进快照。
-fn apply_record_set(snap: &mut UsageSnapshot, records: &[Value], per_record_is_request: bool, rate: f64) {
+fn apply_record_set(
+    snap: &mut UsageSnapshot,
+    records: &[Value],
+    per_record_is_request: bool,
+    rate: f64,
+) {
     let (day_map, model_map, logs, tokens, reqs, cost) =
         normalize(records, rate, per_record_is_request);
     snap.days = day_map.into_values().collect();
@@ -785,12 +818,20 @@ fn normalize(records: &[Value], rate: f64, per_record_is_request: bool) -> Norma
         }
     }
 
-    (day_map, model_map, logs, tokens_total, requests_total, cost_total)
+    (
+        day_map,
+        model_map,
+        logs,
+        tokens_total,
+        requests_total,
+        cost_total,
+    )
 }
 
 /// 补齐最近 N 天（缺失填 0），让趋势图连续。
 pub fn fill_days(days: Vec<DailyUsage>, n: usize) -> Vec<DailyUsage> {
-    let mut map: BTreeMap<String, DailyUsage> = days.into_iter().map(|d| (d.date.clone(), d)).collect();
+    let mut map: BTreeMap<String, DailyUsage> =
+        days.into_iter().map(|d| (d.date.clone(), d)).collect();
     for date in recent_dates(n) {
         map.entry(date.clone()).or_insert(DailyUsage {
             date,
@@ -804,15 +845,13 @@ pub fn fill_days(days: Vec<DailyUsage>, n: usize) -> Vec<DailyUsage> {
 
 pub fn today_period(days: &[DailyUsage]) -> Option<PeriodUsage> {
     let today = today_str();
-    days.iter()
-        .find(|d| d.date == today)
-        .map(|d| PeriodUsage {
-            requests: d.requests,
-            tokens: d.tokens,
-            cost: d.cost,
-            from: today.clone(),
-            to: today,
-        })
+    days.iter().find(|d| d.date == today).map(|d| PeriodUsage {
+        requests: d.requests,
+        tokens: d.tokens,
+        cost: d.cost,
+        from: today.clone(),
+        to: today,
+    })
 }
 
 /// 当前自然月的汇总（与站点控制台按自然月统计的口径一致），供详情页「本月」卡片使用。

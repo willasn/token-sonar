@@ -1,6 +1,6 @@
 //! Kimi 开放平台：官方余额接口。
 
- use serde_json::Value;
+use serde_json::Value;
 
 use crate::http::Http;
 use crate::models::{Metric, ProviderConfig, UsageSnapshot};
@@ -39,8 +39,8 @@ async fn read_balance(
         return Err("请先填写 API Key".to_string());
     }
     let url = balance_url(cfg);
-    let parsed = reqwest::Url::parse(&url)
-        .map_err(|_| "Kimi 余额仅支持 HTTPS 官方余额端点".to_string())?;
+    let parsed =
+        reqwest::Url::parse(&url).map_err(|_| "Kimi 余额仅支持 HTTPS 官方余额端点".to_string())?;
     if parsed.scheme() != "https"
         || parsed.port_or_known_default() != Some(443)
         || !parsed.username().is_empty()
@@ -65,16 +65,18 @@ fn parse_balance(v: &Value) -> Result<(f64, f64, f64), String> {
     if v.get("code").and_then(Value::as_i64) != Some(0)
         || v.get("status").and_then(Value::as_bool) != Some(true)
     {
-        let code = v.get("code").map(Value::to_string).unwrap_or_else(|| "缺失".to_string());
-        return Err(format!("Kimi 余额接口业务失败（code {code}，status 非 true）"));
+        let code = v
+            .get("code")
+            .map(Value::to_string)
+            .unwrap_or_else(|| "缺失".to_string());
+        return Err(format!(
+            "Kimi 余额接口业务失败（code {code}，status 非 true）"
+        ));
     }
     let data = v.get("data").ok_or("Kimi 余额接口未返回 data")?;
-    let available = pick_f64(data, &["available_balance"])
-        .ok_or("Kimi 余额接口未返回可用余额")?;
-    let voucher = pick_f64(data, &["voucher_balance"])
-        .ok_or("Kimi 余额接口未返回代金券余额")?;
-    let cash = pick_f64(data, &["cash_balance"])
-        .ok_or("Kimi 余额接口未返回现金余额")?;
+    let available = pick_f64(data, &["available_balance"]).ok_or("Kimi 余额接口未返回可用余额")?;
+    let voucher = pick_f64(data, &["voucher_balance"]).ok_or("Kimi 余额接口未返回代金券余额")?;
+    let cash = pick_f64(data, &["cash_balance"]).ok_or("Kimi 余额接口未返回现金余额")?;
     Ok((available, voucher, cash))
 }
 
@@ -129,7 +131,15 @@ pub async fn chat(
     } else {
         "/v1/chat/completions"
     };
-    openai_chat(http, &crate::http::join_url(&base, path), &key, model, system, user).await
+    openai_chat(
+        http,
+        &crate::http::join_url(&base, path),
+        &key,
+        model,
+        system,
+        user,
+    )
+    .await
 }
 
 /// 读取 Moonshot `/v1/models` 的可用模型列表。
@@ -138,6 +148,10 @@ pub async fn list_models(cfg: &ProviderConfig, http: &Http) -> Vec<String> {
         return Vec::new();
     };
     let base = api_base(cfg);
-    let path = if base.ends_with("/v1") { "/models" } else { "/v1/models" };
+    let path = if base.ends_with("/v1") {
+        "/models"
+    } else {
+        "/v1/models"
+    };
     fetch_model_ids(http, &base, &key, path).await
 }

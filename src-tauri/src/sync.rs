@@ -367,7 +367,11 @@ fn git2_test_connection(cfg: &SyncConfig) -> Result<String, String> {
 }
 
 /// 打开或初始化本地暂存仓库；换了同步目标则重建副本（先确认新地址可达再删）。
-fn git2_open_repo(repo_dir: &Path, cfg: &SyncConfig, url: &str) -> Result<git2::Repository, String> {
+fn git2_open_repo(
+    repo_dir: &Path,
+    cfg: &SyncConfig,
+    url: &str,
+) -> Result<git2::Repository, String> {
     let git_dir = repo_dir.join(".git");
 
     if git_dir.exists() {
@@ -515,7 +519,14 @@ fn git2_push_backup(
     let message = format!("chore(sync): TokenSonar 数据备份 {}", now_str());
     let parents: Vec<&git2::Commit> = parent.iter().collect();
     let commit_oid = repo
-        .commit(Some(branch_ref.as_str()), &sig, &sig, &message, &tree, &parents)
+        .commit(
+            Some(branch_ref.as_str()),
+            &sig,
+            &sig,
+            &message,
+            &tree,
+            &parents,
+        )
         .map_err(|e| humanize(&format!("提交失败：{}", e.message()), cfg))?;
 
     let mut remote = repo
@@ -531,10 +542,7 @@ fn git2_push_backup(
     let short = commit_oid.to_string()[..7].to_string();
     Ok(SyncResult {
         ok: true,
-        message: format!(
-            "已推送到 {branch}：{} 个文件，提交 {short}",
-            files.len()
-        ),
+        message: format!("已推送到 {branch}：{} 个文件，提交 {short}", files.len()),
         commit: Some(short),
         changed: true,
         file_count: files.len(),
@@ -627,7 +635,12 @@ fn run(dir: Option<&Path>, args: &[&str], timeout: Duration) -> Result<String, S
 }
 
 /// 以用户填写的提交邮箱提交；未填则沿用内置占位邮箱。
-fn run_commit(repo_dir: &Path, args: &[&str], timeout: Duration, email: &str) -> Result<String, String> {
+fn run_commit(
+    repo_dir: &Path,
+    args: &[&str],
+    timeout: Duration,
+    email: &str,
+) -> Result<String, String> {
     let mut cmd = git(Some(repo_dir));
     cmd.args(args);
     let email = email.trim();

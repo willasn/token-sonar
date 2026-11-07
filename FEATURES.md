@@ -112,6 +112,10 @@
 | **阶跃星辰 StepFun** | `api` | 开放平台 API Key | 国内 `https://api.stepfun.com`（默认，CNY）；国际 `https://api.stepfun.ai`（USD），可改 | 官方账户接口 `GET /v1/accounts`：可用余额（`balance`）、累计充值（`total_cash_balance`）、累计赠送（`total_voucher_balance`）、账户类型（`prepaid` / `postpaid`）；不提供逐日用量、模型统计或 API Key 列表（无登录授权方式） |
 | **华为云盘古 Pangu** | `api` | 华为云 Access Key ID + Secret Access Key（AK/SK，非盘古 API Key） | 固定 `https://bss.myhuaweicloud.com`（华为云费用中心，非盘古推理 Base URL） | `GET /v2/accounts/customer-accounts/balances`（SDK-HMAC-SHA256 签名）：华为云账户整体余额分项（余额 / 信用 / 奖励金 / 保证金）与欠款总额；盘古调用统计仅 ModelArts Studio 控制台可见，公开接口不提供逐日用量、Token 或模型统计 |
 | **PPIO 派欧云** | `api` | PPIO API Key | 默认 `https://api.ppio.com`（管理接口，可改；推理地址为 `https://api.ppinfra.com/v3/openai`） | `GET /openapi/v1/billing/balance/detail`：可用余额、现金、信用额度、欠费；`GET /openapi/v1/billing/bill/list?cycleType=Day&productCategory=llm`：近 30 天按日 / 按模型的 LLM Token、请求数与费用（不含 GPU / 存储 / 生成类 API） |
+| **OpenAI**（国际） | `api` | OpenAI API Key | 默认 `https://api.openai.com`，可改 | 仅校验 Key：`GET /v1/models`；官方未开放账户余额 / 逐日用量公开接口，账单与用量请在官方后台查看 |
+| **Anthropic / Claude**（国际） | `api` | Anthropic API Key | 默认 `https://api.anthropic.com`，可改 | 仅校验 Key：`GET /v1/models`（`x-api-key` + `anthropic-version`）；用量请到官方后台查看 |
+| **Google / Gemini**（国际） | `api` | Google AI Studio API Key | 默认 `https://generativelanguage.googleapis.com`，可改 | 仅校验 Key：`GET /v1beta/models?key=…`；用量请到官方后台查看 |
+| **xAI / Grok**（国际） | `api` | xAI API Key | 默认 `https://api.x.ai`，可改 | 仅校验 Key：`GET /v1/models`；用量请到官方后台查看 |
 
 旧配置迁移：加载时若没有 `accessMode`，按「有会话凭证即视为登录方式」推断，并把历史的
 `platformToken` 归位到 `sessionToken`（`models.rs` 的 `normalize()`，`storage.rs` 载入时执行）。
@@ -119,6 +123,8 @@ New API 已移除「登录授权」链路，历史登录型配置会被 `normali
 
 ### 6.2 表单字段
 - 通用：显示名称、图标字符、类型、主题色（取色器）、备注
+- 一级渠道类型按**国内厂商 / 国际厂商**两个大类左右切换展示（`KIND_INFO.region` 表驱动，新增厂商自动归组；切换大类时自动选中该大类首个可用厂商）
+- 暂不支持的厂商（OpenAI / Anthropic / Gemini / xAI）卡片**置灰 + 「暂不支持」标记、不可点击**，列表筛选 pill 同样置灰禁用
 - 接入方式：厂商类型卡片下方的一组切换卡（API Key / 登录授权），按厂商展示各自说明；
   切换只重建凭证字段，另一种方式的凭证用隐藏字段保留，来回切换不丢
 - 凭证（按所选接入方式二选一，分别存 `token` / `sessionToken`，互不覆盖）：
@@ -357,9 +363,9 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
   翻译成「请确认 AK/SK 且密钥具备费用中心与方舟只读权限」的可操作提示
 - 余额与套餐 / 模型的权限范围可能不同：任一项读到数据即视为该账号可用，失败项降级成「读取提示」
 - **按量推理用量**：`POST GetInferenceUsage`（ark / 2024-01-01），北京时间覆盖本月与近 30 天；`ProjectName=default`，只统计 `BillingStatus=normal`，按动态 `Fields` 对齐 `Data`，汇总 Token、请求数、当月模型与输入/输出 Token；仅输入输出均有效时补算缺失的 TotalTokens。
-- **按量消费**：`POST https://open.volcengineapi.com/?Action=ListBillDetail&Version=2022-01-01`，官方费用接口签名地域 `cn-north-1` / service `billing`；当月按天计费项、后付费消费使用账单，逐页读取（每页 300，上限 100 页），精确匹配 `ProductZh=火山方舟`，仅以 CodingPlan / AgentPlan / 套餐明确名称排除套餐，不泛泛排除 agent 模型；同一 `GroupPeriod=1` / `GroupTerm=0` 查询按 `BillDetailId` 去重，不按结算类型丢弃金额。费用使用定价币种的 `PayableAmount`，不猜产品代码或模型费用。
+- **已出账费用**：`POST https://open.volcengineapi.com/?Action=ListBillDetail&Version=2022-01-01`，官方费用接口签名地域 `cn-north-1` / service `billing`；参数与费用中心「账单详情 - 账单明细」一致（`GroupTerm=1` 统计项=实例、`GroupPeriod=1` 按天），不按计费模式 / 账单类型预筛，逐页读取（每页 300，上限 100 页），按 `ProductZh` 前缀匹配方舟相关产品（`火山方舟`、`开源LLM模型`、`字节跳动大模型服务`、`BGE语义向量模型服务` 及带后缀的子项），仅以 CodingPlan / AgentPlan / 套餐明确名称排除套餐，不泛泛排除 agent 模型；按 `BillDetailId` 去重，退款 / 抵扣行按应付金额原值计入（可为负）。费用使用定价币种的 `PayableAmount`，并按 `ConfigName`（配置名称即模型名）归集每模型已出账费用。另用 `ExpenseDate=当天` 以同一口径单独查询一次当日账单，今日费用优先取该结果（与控制台同口径、更新更及时），月度合计用其替换日聚合中的当天值。
 - **双源独立降级**：推理成功才开启 `supportsUsageApi`；账单失败保留 Token，推理失败保留费用，显式展示未知维度与独立读取提示。分页异常/上限保留已读取部分但不冒充完整账期。负数仅作现有非可空用量字段的未知标记，前端按能力表显示「—」；含未知维度的汇总保持未知，不计成真实零。
-- **口径限制**：推理仅默认项目，费用为账户当月已出账按量消费而非实时/全历史，可能延迟；模型不关联账单成本。跨月近 30 天的上月费用未查询，显示未知。当前余额与账单共用币种字段，只支持 CNY 定价账单，其他币种明确降级而不混算。官方仅定义结算类型，未承诺不同类型是重复层；保留各类型应付金额，计费口径仍需真实账单核对。只填本月/今日与逐日用量，不将本月值冒充全历史累计字段；演示模式同口径，模型费用保持未知。不使用本地台账或从 Token 推算费用。
+- **口径限制**：推理仅默认项目，费用为账户当月已出账应付金额（与控制台账单明细同口径），而非实时/全历史，可能延迟；模型费用按账单 `ConfigName` 归集（与推理 `ModelName` 大小写 / 分隔符归一化后匹配），仅账单出现的模型补一行未知 Token 的费用记录，分页不完整时不冒充完整模型费用。跨月近 30 天的上月费用未查询，显示未知。当前余额与账单共用币种字段，只支持 CNY 定价账单，其他币种明确降级而不混算。官方仅定义结算类型，未承诺不同类型是重复层；保留各类型应付金额，计费口径仍需真实账单核对。只填本月/今日与逐日用量，不将本月值冒充全历史累计字段；当天账单行缺失（含 `ExpenseDate=当天` 查询也为空）时今日费用保持未知并显示「—」，不落成 0；演示模式同口径，模型费用保持未知。不使用本地台账或从 Token 推算费用。
 
 ---
 
@@ -431,7 +437,8 @@ Token 过期时错误提示会引导回到「登录获取」重新授权。
 | 刷新间隔 | 5 / 10 / 15 / 30 / 60 分钟 | 已实现 |
 | 数据目录 | 展示路径 + 一键在系统文件管理器中打开 | 已实现 |
 | 关于信息 | 版本、运行环境、账号数量 | 已实现 |
-| 应用更新 | 启动静默检查 + 手动「检查更新」，并行查询 R2 镜像与 GitHub Releases 后下载安装并重启 | 已实现 |
+| 应用更新 | 启动静默检查 + 手动「检查更新」，并行查询 R2 镜像与 GitHub Releases（任一源可用即可，5 秒整体超时），多源按版本对比后下载安装并重启 | 已实现 |
+| 窗口与托盘 | 点关闭按钮只收进托盘、不退出；托盘左键恢复主窗口，托盘菜单「退出 TokenSonar」才真正退出 | 已实现 |
 | Git 配置同步 | 仓库地址 / 用户名 / 密码或令牌 / 提交作者邮箱 / 分支（首次同步自动保存）+ 一键同步（先拉取合并，冲突可选） | 已实现 |
 
 ---

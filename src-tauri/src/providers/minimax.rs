@@ -49,7 +49,8 @@ fn api_origin(cfg: &ProviderConfig) -> Result<String, String> {
         || !official
     {
         return Err(
-            "MiniMax 仅支持官方 HTTPS 端点：国内 api.minimaxi.com / 海外 api.minimax.io".to_string(),
+            "MiniMax 仅支持官方 HTTPS 端点：国内 api.minimaxi.com / 海外 api.minimax.io"
+                .to_string(),
         );
     }
     Ok(format!("https://{host}"))
@@ -108,7 +109,10 @@ fn friendly(e: String) -> String {
 
 async fn read_balance(origin: &str, key: &str, http: &Http) -> Result<Value, String> {
     let url = format!("{origin}/account/query_balance");
-    let v = http.get_json(&url, Some(key), None).await.map_err(friendly)?;
+    let v = http
+        .get_json(&url, Some(key), None)
+        .await
+        .map_err(friendly)?;
     ensure_ok(&v).map_err(friendly)?;
     if pick_f64(&v, &["available_amount"]).is_none() {
         return Err("MiniMax 余额接口未返回 available_amount".to_string());
@@ -471,9 +475,10 @@ pub async fn probe(cfg: &ProviderConfig, http: &Http) -> Result<String, String> 
                 .cloned()
                 .unwrap_or_default();
             let mut parts: Vec<String> = vec![r.source.to_string()];
-            if let Some(item) = items.iter().find(|i| {
-                pick_f64(i, &["current_interval_total_count"]).unwrap_or(0.0) > 0.0
-            }) {
+            if let Some(item) = items
+                .iter()
+                .find(|i| pick_f64(i, &["current_interval_total_count"]).unwrap_or(0.0) > 0.0)
+            {
                 let label = model_label(&pick_string(item, &["model_name"]).unwrap_or_default());
                 if let Some(w) = build_window(
                     item,
@@ -498,11 +503,7 @@ pub async fn probe(cfg: &ProviderConfig, http: &Http) -> Result<String, String> 
                     "连接成功，可用余额 {currency} {available:.2}；未检测到订阅套餐"
                 ))
             }
-            Err(balance_err) => Err(format!(
-                "{}；余额接口：{}",
-                plan_err,
-                balance_err
-            )),
+            Err(balance_err) => Err(format!("{}；余额接口：{}", plan_err, balance_err)),
         },
     }
 }

@@ -256,7 +256,8 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
             Err(e) => notices.push(e),
         }
         if session.is_none() {
-            notices.push("未获取到平台登录凭证，请在编辑账号里点击「登录获取」重新授权".to_string());
+            notices
+                .push("未获取到平台登录凭证，请在编辑账号里点击「登录获取」重新授权".to_string());
         } else if let Some(s) = &session {
             snap.account = s.account.clone();
         }
@@ -335,7 +336,10 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
             value: format!("{} 个", snap.api_keys.len()),
             hint: Some(format!(
                 "其中 {} 个来自手动录入",
-                snap.api_keys.iter().filter(|k| k.source == "manual").count()
+                snap.api_keys
+                    .iter()
+                    .filter(|k| k.source == "manual")
+                    .count()
             )),
         });
     } else if matches!(cfg.mode(), AccessMode::Login) {
@@ -436,13 +440,16 @@ fn apply_balance(snap: &mut UsageSnapshot, v: &Value, preferred_currency: &str) 
         pick_string(&record, &["currency"]).unwrap_or_else(|| preferred_currency.to_string());
     snap.currency = currency.clone();
 
-    let total = pick_f64(&record, &[
-        "total_balance",
-        "totalBalance",
-        "balance",
-        "remain_balance",
-        "remainBalance",
-    ]);
+    let total = pick_f64(
+        &record,
+        &[
+            "total_balance",
+            "totalBalance",
+            "balance",
+            "remain_balance",
+            "remainBalance",
+        ],
+    );
     let granted = pick_f64(&record, &["granted_balance", "grantedBalance"]);
     let topped_up = pick_f64(&record, &["topped_up_balance", "toppedUpBalance"]);
 
@@ -533,7 +540,8 @@ async fn try_platform_summary(http: &Http, s: &Session) -> Option<Value> {
         .await
         .ok()?;
     let biz = extract_biz(&v);
-    if wallet_sum(biz.get("normal_wallets")).is_some() || wallet_sum(biz.get("bonus_wallets")).is_some()
+    if wallet_sum(biz.get("normal_wallets")).is_some()
+        || wallet_sum(biz.get("bonus_wallets")).is_some()
     {
         Some(biz)
     } else {
@@ -555,7 +563,9 @@ fn wallet_sum(wallets: Option<&Value>) -> Option<f64> {
 }
 
 fn wallet_currency(wallets: Option<&Value>) -> Option<String> {
-    arr(wallets).iter().find_map(|w| pick_string(w, &["currency"]))
+    arr(wallets)
+        .iter()
+        .find_map(|w| pick_string(w, &["currency"]))
 }
 
 /// 账户汇总 → 余额（充值 + 赠送）/ 赠送余额。
@@ -695,8 +705,8 @@ fn prev_month(y: i32, m: u32) -> (i32, u32) {
 /// 某个月的用量。2026-08 平台改版后改为「区间查询」（unix 秒 + 本地时区），
 /// 旧的 `?month=&year=` 接口已废弃；这里先走新接口，失败再退回旧接口。
 async fn fetch_month(http: &Http, s: &Session, year: i32, month: u32) -> Result<MonthData, String> {
-    let start = local_midnight(year, month, 1)
-        .ok_or_else(|| format!("月份非法: {year}-{month:02}"))?;
+    let start =
+        local_midnight(year, month, 1).ok_or_else(|| format!("月份非法: {year}-{month:02}"))?;
     let now = chrono::Local::now();
     let end = if (year, month) == (now.year(), now.month()) {
         // 当月查到「明天 00:00」，与平台前端一致
@@ -886,8 +896,8 @@ fn parse_range(amount: &Value, cost: &Value, start: i64, end: i64) -> MonthData 
 
     // 用量：按模型聚合，同时切到日维度
     for series in arr(amount_biz.get("series")) {
-        let model =
-            pick_string(series, &["model", "model_name", "modelName"]).unwrap_or_else(|| "未标注".to_string());
+        let model = pick_string(series, &["model", "model_name", "modelName"])
+            .unwrap_or_else(|| "未标注".to_string());
         let (mut m_req, mut m_tok) = (0.0, 0.0);
         for b in arr(series.get("buckets")) {
             let Some(ts) = bucket_time(b) else { continue };
@@ -996,15 +1006,12 @@ fn parse_month(amount: &Value, cost: &Value) -> MonthData {
         let model = pick_string(b, &["model", "model_name", "modelName"])
             .unwrap_or_else(|| "未标注".to_string());
         let (tokens, requests, hit, miss, resp) = token_breakdown(b.get("usage"));
-        let m = out
-            .models
-            .entry(model.clone())
-            .or_insert(ModelUsage {
-                model: model.clone(),
-                requests: 0.0,
-                tokens: 0.0,
-                cost: 0.0,
-            });
+        let m = out.models.entry(model.clone()).or_insert(ModelUsage {
+            model: model.clone(),
+            requests: 0.0,
+            tokens: 0.0,
+            cost: 0.0,
+        });
         m.requests += requests;
         m.tokens += tokens;
         m.cost += cost_by_model.get(&model).copied().unwrap_or(0.0);
@@ -1028,15 +1035,12 @@ fn parse_month(amount: &Value, cost: &Value) -> MonthData {
         if date.is_empty() {
             continue;
         }
-        let day = out
-            .days
-            .entry(date.clone())
-            .or_insert(DailyUsage {
-                date,
-                requests: 0.0,
-                tokens: 0.0,
-                cost: 0.0,
-            });
+        let day = out.days.entry(date.clone()).or_insert(DailyUsage {
+            date,
+            requests: 0.0,
+            tokens: 0.0,
+            cost: 0.0,
+        });
         for b in arr(d.get("data")) {
             let (tokens, requests, _, _, _) = token_breakdown(b.get("usage"));
             day.tokens += tokens;
@@ -1152,8 +1156,11 @@ fn apply_usage(snap: &mut UsageSnapshot, bundle: UsageBundle, currency: &str) {
     snap.days = all[start..].to_vec();
 
     snap.models = models.into_values().collect();
-    snap.models
-        .sort_by(|a, b| b.cost.partial_cmp(&a.cost).unwrap_or(std::cmp::Ordering::Equal));
+    snap.models.sort_by(|a, b| {
+        b.cost
+            .partial_cmp(&a.cost)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let cur = &bundle.current;
     let prev = &bundle.previous;
@@ -1186,7 +1193,10 @@ fn apply_usage(snap: &mut UsageSnapshot, bundle: UsageBundle, currency: &str) {
     let int = |v: f64| format!("{}", v.round() as i64);
 
     snap.metrics.push(Metric {
-        label: format!("累计消费金额（{} ~ {}）", bundle.previous_label, bundle.current_label),
+        label: format!(
+            "累计消费金额（{} ~ {}）",
+            bundle.previous_label, bundle.current_label
+        ),
         value: money(cur.cost + prev.cost),
         hint: Some("平台按自然月返回，这里合计最近两个自然月".to_string()),
     });
@@ -1214,7 +1224,11 @@ fn apply_usage(snap: &mut UsageSnapshot, bundle: UsageBundle, currency: &str) {
         snap.metrics.push(Metric {
             label: "今日消费".to_string(),
             value: money(t.cost),
-            hint: Some(format!("{} 次请求 · {} tokens", int(t.requests), int(t.tokens))),
+            hint: Some(format!(
+                "{} 次请求 · {} tokens",
+                int(t.requests),
+                int(t.tokens)
+            )),
         });
     }
     if cur.cache_hit + cur.cache_miss > 0.0 {
@@ -1293,73 +1307,83 @@ fn extract_key_list(v: &Value) -> Option<Vec<ApiKeyInfo>> {
 }
 
 fn is_key_like(r: &Value) -> bool {
-    let has_name = pick_string(r, &[
-        "name",
-        "key_name",
-        "keyName",
-        "label",
-        "title",
-        "remark",
-        "alias",
-    ])
+    let has_name = pick_string(
+        r,
+        &[
+            "name", "key_name", "keyName", "label", "title", "remark", "alias",
+        ],
+    )
     .is_some();
-    let has_key = pick_string(r, &[
-        "key",
-        "api_key",
-        "apiKey",
-        "secret",
-        "value",
-        "masked_key",
-        "maskedKey",
-        "token",
-    ])
+    let has_key = pick_string(
+        r,
+        &[
+            "key",
+            "api_key",
+            "apiKey",
+            "secret",
+            "value",
+            "masked_key",
+            "maskedKey",
+            "token",
+        ],
+    )
     .is_some();
-    let has_meta = pick_string(r, &["created_at", "createdAt", "created", "create_time", "id"])
-        .is_some();
+    let has_meta = pick_string(
+        r,
+        &["created_at", "createdAt", "created", "create_time", "id"],
+    )
+    .is_some();
     has_name && (has_key || has_meta)
 }
 
 fn to_key_info(r: &Value) -> ApiKeyInfo {
-    let name = pick_string(r, &[
-        "name",
-        "key_name",
-        "keyName",
-        "label",
-        "title",
-        "remark",
-        "alias",
-    ])
+    let name = pick_string(
+        r,
+        &[
+            "name", "key_name", "keyName", "label", "title", "remark", "alias",
+        ],
+    )
     .unwrap_or_else(|| "未命名".to_string());
-    let raw = pick_string(r, &[
-        "key",
-        "api_key",
-        "apiKey",
-        "secret",
-        "value",
-        "masked_key",
-        "maskedKey",
-    ]);
+    let raw = pick_string(
+        r,
+        &[
+            "key",
+            "api_key",
+            "apiKey",
+            "secret",
+            "value",
+            "masked_key",
+            "maskedKey",
+        ],
+    );
     ApiKeyInfo {
         key_type: Some("api".to_string()),
         id: pick_string(r, &["id", "key_id", "keyId"]).unwrap_or_else(|| name.clone()),
         name,
         masked: raw.as_deref().map(mask_secret),
         secret: None,
-        created_at: short_ts(pick_string(r, &[
-            "created_at",
-            "createdAt",
-            "created",
-            "create_time",
-            "createTime",
-        ])),
-        last_used_at: short_ts(pick_string(r, &[
-            "last_used_at",
-            "lastUsedAt",
-            "last_used",
-            "last_use_time",
-            "lastUseTime",
-        ])),
-        status: pick_string(r, &["status", "state", "enable", "enabled"]).or(Some("正常".to_string())),
+        created_at: short_ts(pick_string(
+            r,
+            &[
+                "created_at",
+                "createdAt",
+                "created",
+                "create_time",
+                "createTime",
+            ],
+        )),
+        last_used_at: short_ts(pick_string(
+            r,
+            &[
+                "last_used_at",
+                "lastUsedAt",
+                "last_used",
+                "last_use_time",
+                "lastUseTime",
+            ],
+        )),
+        status: pick_string(r, &["status", "state", "enable", "enabled"])
+            .or(Some("正常".to_string())),
         source: "api".to_string(),
     }
 }
@@ -1383,14 +1407,8 @@ fn mask_secret(s: &str) -> String {
 }
 
 fn short_ts(s: Option<String>) -> Option<String> {
-    s.map(|v| {
-        if v.len() > 19 {
-            v[..19].to_string()
-        } else {
-            v
-        }
-    })
-    .filter(|v| !v.trim().is_empty())
+    s.map(|v| if v.len() > 19 { v[..19].to_string() } else { v })
+        .filter(|v| !v.trim().is_empty())
 }
 
 /// 平台读到的 keys + 本地手动录入的 keys（按名称去重，手动录入优先补全）。
@@ -1441,10 +1459,7 @@ pub async fn probe(cfg: &ProviderConfig, http: &Http) -> Result<String, String> 
             if api_key.is_empty() {
                 return Err("请先填写 API Key".to_string());
             }
-            let base = cfg
-                .base_url
-                .clone()
-                .unwrap_or_else(|| API_BASE.to_string());
+            let base = cfg.base_url.clone().unwrap_or_else(|| API_BASE.to_string());
             let url = crate::http::join_url(&base, "/user/balance");
             let v = http.get_json(&url, Some(&api_key), None).await?;
             let infos = v

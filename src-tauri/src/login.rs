@@ -424,7 +424,10 @@ async fn wait_for_token(app: &AppHandle) -> Result<String, String> {
         if let Some(candidate) = pending.first().cloned() {
             pending.remove(0);
             if tried.insert(candidate.clone()) {
-                let msg = format!("已捕获 {captured} 个候选凭证，正在验证第 {} 个…", tried.len());
+                let msg = format!(
+                    "已捕获 {captured} 个候选凭证，正在验证第 {} 个…",
+                    tried.len()
+                );
                 if msg != last_progress {
                     last_progress = msg.clone();
                     emit_progress(app, &msg);

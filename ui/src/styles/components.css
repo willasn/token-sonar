@@ -338,6 +338,12 @@
   border-color: transparent;
 }
 
+/* 一级分类的国内 / 国际两个大类：左右切换 */
+.region-tabs {
+  display: flex;
+  gap: var(--sp-2);
+}
+
 .pick-note {
   display: flex;
   align-items: flex-start;
@@ -390,6 +396,30 @@
 .kind-card.is-active {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* 暂不支持的厂商：置灰且不可选择 */
+.kind-card.is-disabled,
+.kind-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.kind-card.is-disabled:hover {
+  border-color: var(--border);
+  background: var(--panel-2);
+}
+
+.kind-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-mute);
+  background: var(--panel-3);
+  border: 1px solid var(--border);
 }
 
 .kind-icon {

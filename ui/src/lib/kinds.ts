@@ -26,6 +26,10 @@ export interface KindInfo {
   detailLabel: string;
   /** 官方厂商：站点地址即官方接口地址，可留空走默认值 */
   official: boolean;
+  /** 厂商归属地区：国内（缺省）/ 国际，添加账号时按此分两个大类 */
+  region?: "cn" | "intl";
+  /** 暂不支持：卡片置灰、不可选择，仅作占位展示 */
+  unsupported?: boolean;
   /** 卡片左上角「控制台」入口地址；空串表示用用户填写的站点地址 */
   console: string;
   url: KindField;
@@ -281,6 +285,74 @@ export const KIND_INFO: Record<ProviderKind, KindInfo> = {
     api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.ppioKeyHint" },
     usageScope: "usage.ppioScope",
   },
+  openai: {
+    name: "kind.openai.name",
+    desc: "kind.openai.desc",
+    icon: "OA",
+    accent: "#10a37f",
+    chip: "chip-teal",
+    kindLabel: "providers.kindOpenai",
+    detailLabel: "detail.kindOpenai",
+    official: true,
+    region: "intl",
+    unsupported: true,
+    console: "https://platform.openai.com/usage",
+    url: { label: "form.apiUrl", hint: "form.intlUrlHint", placeholder: "https://api.openai.com" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.intlKeyHint" },
+    usageScope: "usage.intlScope",
+  },
+  anthropic: {
+    name: "kind.anthropic.name",
+    desc: "kind.anthropic.desc",
+    icon: "AN",
+    accent: "#d97757",
+    chip: "chip-teal",
+    kindLabel: "providers.kindAnthropic",
+    detailLabel: "detail.kindAnthropic",
+    official: true,
+    region: "intl",
+    unsupported: true,
+    console: "https://console.anthropic.com/settings/usage",
+    url: { label: "form.apiUrl", hint: "form.intlUrlHint", placeholder: "https://api.anthropic.com" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.intlKeyHint" },
+    usageScope: "usage.intlScope",
+  },
+  gemini: {
+    name: "kind.gemini.name",
+    desc: "kind.gemini.desc",
+    icon: "GM",
+    accent: "#4285f4",
+    chip: "chip-teal",
+    kindLabel: "providers.kindGemini",
+    detailLabel: "detail.kindGemini",
+    official: true,
+    region: "intl",
+    unsupported: true,
+    console: "https://aistudio.google.com/usage",
+    url: {
+      label: "form.apiUrl",
+      hint: "form.intlUrlHint",
+      placeholder: "https://generativelanguage.googleapis.com",
+    },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.intlKeyHint" },
+    usageScope: "usage.intlScope",
+  },
+  xai: {
+    name: "kind.xai.name",
+    desc: "kind.xai.desc",
+    icon: "xAI",
+    accent: "#333333",
+    chip: "chip-teal",
+    kindLabel: "providers.kindXai",
+    detailLabel: "detail.kindXai",
+    official: true,
+    region: "intl",
+    unsupported: true,
+    console: "https://console.x.ai/",
+    url: { label: "form.apiUrl", hint: "form.intlUrlHint", placeholder: "https://api.x.ai" },
+    api: { label: "form.apiKey", placeholder: "form.apiKeyPlaceholder", hint: "form.intlKeyHint" },
+    usageScope: "usage.intlScope",
+  },
 };
 
 const PLAN_INFO: Record<string, Partial<KindInfo>> = {
@@ -316,7 +388,13 @@ export function providerInfo(provider: { kind: string; planType?: ProviderConfig
   return info.plans && provider.planType ? { ...info, ...PLAN_INFO[provider.planType] } : info;
 }
 
-export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan", "mimo", "minimax", "siliconflow", "stepfun", "pangu", "ppio"];
+export const KIND_ORDER: ProviderKind[] = ["deepseek", "newapi", "glm", "volcengine", "kimi", "bailian", "hunyuan", "mimo", "minimax", "siliconflow", "stepfun", "pangu", "ppio", "openai", "anthropic", "gemini", "xai"];
+
+/** 一级渠道类型的两个大类：国内 / 国际（按 KIND_INFO.region 自动归组） */
+export const KIND_GROUPS: { region: "cn" | "intl"; label: string; kinds: ProviderKind[] }[] = [
+  { region: "cn", label: "form.regionCn", kinds: KIND_ORDER.filter((k) => KIND_INFO[k].region !== "intl") },
+  { region: "intl", label: "form.regionIntl", kinds: KIND_ORDER.filter((k) => KIND_INFO[k].region === "intl") },
+];
 
 export function usageValue(snap: UsageSnapshot | null, value: number | null | undefined): number | null {
   return snap && kindInfo(snap.kind).independentUsageSources && (value == null || value < 0) ? null : value ?? null;
@@ -352,6 +430,10 @@ export const MODES_BY_KIND: Record<ProviderKind, AccessModeKey[]> = {
   stepfun: ["api"],
   pangu: ["api"],
   ppio: ["api"],
+  openai: ["api"],
+  anthropic: ["api"],
+  gemini: ["api"],
+  xai: ["api"],
 };
 
 interface ModeInfo {
@@ -406,6 +488,18 @@ export const MODE_INFO: Record<string, Partial<Record<AccessModeKey, ModeInfo>>>
   ppio: {
     api: { label: "mode.api.label", desc: "mode.ppio.api.desc", gets: "mode.ppio.api.gets" },
   },
+  openai: {
+    api: { label: "mode.api.label", desc: "mode.intl.api.desc", gets: "mode.intl.api.gets" },
+  },
+  anthropic: {
+    api: { label: "mode.api.label", desc: "mode.intl.api.desc", gets: "mode.intl.api.gets" },
+  },
+  gemini: {
+    api: { label: "mode.api.label", desc: "mode.intl.api.desc", gets: "mode.intl.api.gets" },
+  },
+  xai: {
+    api: { label: "mode.api.label", desc: "mode.intl.api.desc", gets: "mode.intl.api.gets" },
+  },
 };
 
 export const FILTERS = [
@@ -423,6 +517,10 @@ export const FILTERS = [
   { key: "stepfun", label: "filter.stepfun" },
   { key: "pangu", label: "filter.pangu" },
   { key: "ppio", label: "filter.ppio" },
+  { key: "openai", label: "filter.openai" },
+  { key: "anthropic", label: "filter.anthropic" },
+  { key: "gemini", label: "filter.gemini" },
+  { key: "xai", label: "filter.xai" },
   { key: "error", label: "filter.error" },
   { key: "off", label: "filter.off" },
 ];

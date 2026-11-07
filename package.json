@@ -4,6 +4,7 @@
   "private": true,
   "description": "TokenSonar — 汇总监控各家 AI 厂商 Token 用量 / 请求次数 / 余额 / 费用的桌面应用",
   "scripts": {
+    "version": "node scripts/sync-version.mjs",
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",

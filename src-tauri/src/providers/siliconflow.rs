@@ -53,9 +53,7 @@ fn parse_info(v: &Value) -> Result<(f64, f64, f64), String> {
             return Err(format!("硅基流动账户接口返回失败：{msg}"));
         }
     }
-    let data = v
-        .get("data")
-        .ok_or("硅基流动账户接口未返回 data")?;
+    let data = v.get("data").ok_or("硅基流动账户接口未返回 data")?;
     let total = pick_f64(data, &["totalBalance"]).ok_or("硅基流动账户接口未返回总余额")?;
     let charge = pick_f64(data, &["chargeBalance"]).unwrap_or(0.0);
     let gift = pick_f64(data, &["balance"]).unwrap_or(0.0);
@@ -71,11 +69,8 @@ pub async fn fetch(cfg: &ProviderConfig, http: &Http) -> UsageSnapshot {
             snap.ok = true;
             snap.currency = currency.to_string();
             snap.balance = Some(total);
-            for (label, amount) in [
-                ("总余额", total),
-                ("充值余额", charge),
-                ("赠送余额", gift),
-            ] {
+            for (label, amount) in [("总余额", total), ("充值余额", charge), ("赠送余额", gift)]
+            {
                 snap.metrics.push(Metric {
                     label: format!("{label}（{currency}）"),
                     value: format!("{amount:.2}"),
