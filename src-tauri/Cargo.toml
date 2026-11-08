@@ -1,6 +1,6 @@
 [package]
 name = "token-sonar"
-version = "0.1.6"
+version = "0.1.7"
 description = "TokenSonar - 多厂商 AI Token 用量 / 余额 / 费用监控台"
 authors = ["TokenSonar"]
 edition = "2021"
